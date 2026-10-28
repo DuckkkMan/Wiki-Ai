@@ -16,7 +16,36 @@ function norm(s){return s.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[
 function smallTalk(raw){const q=norm(raw);if(/^(oi|ola|opa|eai|e ae|iae|hey|hello|bom dia|boa tarde|boa noite|salve|fala|tudo bem|como vai)(\s|$)/.test(q))return ["Oi! 😊 Como você está? Pode conversar comigo normalmente ou perguntar algo que esteja curioso para saber.","Olá! Que bom ter você por aqui. O que você gostaria de fazer hoje?","Opa! Tudo certo por aqui. Pode mandar sua pergunta ou só bater papo mesmo!"][Math.floor(Math.random()*3)];if(/^(obrigado|obrigada|valeu|brigado|brigada|thanks)(\s|$)/.test(q))return"Por nada! 😊 Se precisar de mais alguma coisa, é só falar.";if(/^(tchau|ate mais|falou|fui)$/.test(q))return"Até mais! 👋 Quando quiser conversar ou descobrir algo novo, estarei por aqui.";if(/^(quem e voce|qual seu nome|o que e voce|voce e uma ia|quem te criou)$/.test(q))return"Eu sou a Wiki AI, um chatbot experimental. Consigo conversar sobre mensagens simples e pesquisar artigos da Wikipédia. Ainda não tenho um modelo generativo completo conectado, então tenho algumas limitações.";if(/^(tudo bem|como voce esta|como vai voce)$/.test(q))return"Tudo bem por aqui! 😊 E com você?";if(/^(kkkk+|haha+|rsrs+|lol)$/.test(q))return"😂 Hahaha! Conta aí!";if(/^(sim|nao|talvez|entendi|ata|ah|ok|okay|beleza|legal|massa|show)$/.test(q))return"Entendi! 🙂 Quer me contar mais ou tem outra coisa em mente?";if(/^(me ajuda|pode me ajudar|preciso de ajuda)$/.test(q))return"Claro! Me conta com o que você precisa de ajuda e vamos por partes.";if(/^(me conte uma curiosidade|curiosidade interessante)$/.test(q))return"Uma curiosidade: polvos têm três corações, e parte do sangue deles é azul por causa de uma proteína que transporta oxigênio.";return null}
 function shouldSearch(raw){const q=norm(raw);return /^(o que|quem|como|por que|porque|qual|quais|onde|quando|me fale sobre|me conta sobre|explique|defina|pesquise|pesquisa|procure|busque|significado de|para que serve|historia de|me explique)\b/.test(q)||/\b(wikipedia|artigo sobre|pesquise sobre|pesquisa sobre|me fale sobre|me conta sobre)\b/.test(q)}
 async function wiki(query){const base="https://pt.wikipedia.org/w/api.php",p=new URLSearchParams({action:"query",list:"search",srsearch:query,srlimit:"1",format:"json",origin:"*",utf8:"1"}),res=await fetch(base+"?"+p);if(!res.ok)throw Error("A Wikipédia não respondeu agora.");const data=await res.json(),hit=data?.query?.search?.[0];if(!hit)return null;const p2=new URLSearchParams({action:"query",prop:"extracts",exintro:"1",explaintext:"1",redirects:"1",titles:hit.title,format:"json",origin:"*",utf8:"1"}),r2=await fetch(base+"?"+p2);if(!r2.ok)throw Error("Não consegui carregar o artigo.");const d2=await r2.json(),page=Object.values(d2?.query?.pages||{})[0];let text=String(page?.extract||"").replace(/\s+/g," ").trim();if(!text)return null;if(text.length>2600)text=text.slice(0,2600).replace(/\s+\S*$/,"")+"…";const title=page?.title||hit.title;return{title,text,url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent(title.replace(/ /g,"_"))}}
-async function answer(raw){const local=smallTalk(raw);if(local)return{text:local};if(shouldSearch(raw)){try{const a=await wiki(raw);if(a)return{text:a.text,source:{title:a.title,url:a.url}};return{text:"Não encontrei um artigo na Wikipédia. Tente perguntar de outro jeito ou usar termos mais específicos."}}catch(e){return{text:(e.message||"Não consegui pesquisar agora.")+" Você ainda pode conversar comigo normalmente."}}}return{text:"Posso conversar com você normalmente! 😊 Nesta versão, consigo responder a saudações, agradecimentos e algumas mensagens simples. Para perguntas informativas, tente “O que é inteligência artificial?” ou “Como funciona a internet?”. Ainda não tenho um modelo generativo conectado para conversar sobre qualquer assunto com a mesma profundidade do ChatGPT."}}
+async function googleSearch(query){
+ const url="https://r.jina.ai/http://www.google.com/search?q="+encodeURIComponent(query);
+ const res=await fetch(url,{headers:{"Accept":"text/plain"}});
+ if(!res.ok)throw Error("A pesquisa na web está indisponível agora.");
+ const page=await res.text();
+ const lines=page.split("\n").map(x=>x.trim()).filter(Boolean);
+ const results=[];
+ for(let i=0;i<lines.length&&results.length<5;i++){
+  const m=lines[i].match(/^\[([^\]]{3,180})\]\((https?:\/\/[^)]+)\)$/);
+  if(!m||/google\.com\/search|support\.google|accounts\.google/i.test(m[2]))continue;
+  const url=m[2].replace(/&amp;/g,"&");
+  let snippet="";
+  for(let j=i+1;j<Math.min(i+4,lines.length);j++){if(lines[j]&&!lines[j].startsWith("[")&&!lines[j].startsWith("http")&&lines[j].length>35){snippet=lines[j].replace(/\*\*/g,"").slice(0,450);break;}}
+  if(!results.some(x=>x.url===url))results.push({title:m[1],url,snippet});
+ }
+ return results;
+}
+async function answer(raw){
+ const local=smallTalk(raw);if(local)return{text:local};
+ if(shouldSearch(raw)){
+  const topic=extractTopic(raw);
+  try{
+   const results=await googleSearch(topic);
+   if(results.length){const text="Pesquisei na web sobre "+topic+". Aqui estão os resultados mais relevantes que consegui encontrar:\\n\\n"+results.map((r,i)=>(i+1)+". "+r.title+(r.snippet?"\\n"+r.snippet:"")).join("\\n\\n")+"\\n\\nEstes são trechos dos resultados da pesquisa, não uma resposta gerada por uma IA. Abra as fontes para conferir os detalhes.";return{text,source:{title:"Ver resultados no Google",url:"https://www.google.com/search?q="+encodeURIComponent(topic)}}}
+  }catch(e){console.warn("Pesquisa Google falhou:",e)}
+  try{const a=await wiki(topic);if(a)return{text:a.text,source:{title:a.title,url:a.url}};return{text:"Não encontrei resultados úteis. Tente usar palavras mais específicas ou abrir a pesquisa do Google.",source:{title:"Pesquisar no Google",url:"https://www.google.com/search?q="+encodeURIComponent(topic)}}}
+  catch(e){return{text:"Não consegui acessar a pesquisa agora. Você pode abrir os resultados diretamente no Google.",source:{title:"Pesquisar no Google",url:"https://www.google.com/search?q="+encodeURIComponent(topic)}}}
+ }
+ return{text:"Posso responder saudações e algumas mensagens simples. Para pesquisar informações, pergunte “O que é um buraco negro?” ou “Como funciona a internet?”. Vou usar o tema principal para buscar páginas na web. Ainda não tenho um modelo generativo conectado para sintetizar informações como o ChatGPT."};
+}
 async function sendMessage(raw){const text=raw.trim();if(!text||busy)return;busy=true;send.disabled=true;showChat();render("user",text);add("user",text);input.value="";resize();const load=typing();try{const a=await answer(text);load.remove();render("assistant",a.text,a.source);add("assistant",a.text,a.source)}catch(e){load.remove();render("assistant","Ops, algo deu errado. Tente novamente.");toast(e.message||"Erro inesperado.",true)}finally{busy=false;send.disabled=false;input.focus()}}
 function theme(t){document.body.classList.toggle("light-mode",t==="light");$("#themeButton").textContent=t==="light"?"☾":"☼";try{localStorage.setItem(THEME,t)}catch{}}
 function showAuth(){$("#authModal").hidden=false;$("#logoutButton").hidden=!user;$("#googleButton").hidden=!!user;$("#guestButton").hidden=!!user;$("#authTitle").textContent=user?"Conta conectada":"Entre na Wiki AI"}
