@@ -1,48 +1,8 @@
 <!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#090c18">
-  <meta name="description" content="Wiki AI — explore assuntos, encontre artigos e descubra conhecimento na Wikipédia.">
-  <title>Wiki AI — Centro de conhecimento</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-<div class="app-shell">
-  <aside class="sidebar" id="sidebar">
-    <a class="brand" href="./" aria-label="Wiki AI início"><span class="brand-mark">W</span><span><strong>WIKI AI</strong><small>KNOWLEDGE SYSTEM</small></span></a>
-    <button class="new-chat" id="newChat"><span>＋</span> Nova pesquisa</button>
-    <div class="section-label">PESQUISAS RECENTES</div>
-    <div class="history" id="history"></div>
-    <div class="sidebar-bottom"><span class="online-dot"></span><span>WIKI AI <span class="muted">• STATIC WEB</span></span></div>
-  </aside>
-  <main class="main">
-    <header class="topbar">
-      <button class="mobile-menu" id="mobileMenu" aria-label="Abrir menu">☰</button>
-      <span class="eyebrow">CENTRO DE CONHECIMENTO</span>
-      <div class="account-area"><button class="text-button" id="themeButton" title="Alternar aparência">◐ Aparência</button><button class="text-button" id="clearHistory">Limpar histórico</button></div>
-    </header>
-    <section class="welcome" id="welcome">
-      <div class="sparkle">✳</div><p class="eyebrow accent">CURIOSIDADE É O COMEÇO DE TUDO</p>
-      <h1>Descubra algo <span>novo.</span></h1>
-      <p class="welcome-subtitle">Conhecimento a um clique de distância.</p>
-    </section>
-    <section class="search-wrap" aria-label="Pesquisa">
-      <form class="search-box" id="askForm"><span class="search-icon">⌕</span><input id="question" maxlength="250" autocomplete="off" placeholder="O que você quer descobrir hoje?" aria-label="Sua pergunta"><button class="primary-button" id="askButton" type="submit">PESQUISAR <span>↗</span></button></form>
-      <div class="search-hint">Pesquisa em artigos da Wikipédia em português · Gratuito</div>
-    </section>
-    <section class="suggestions" id="suggestions" aria-label="Sugestões">
-      <button class="suggestion" data-prompt="Como funciona a fotossíntese?"><span class="suggestion-icon green">✳</span><span><small>CIÊNCIA</small><strong>Como funciona a fotossíntese?</strong></span><span class="suggestion-arrow">↗</span></button>
-      <button class="suggestion" data-prompt="O que é inteligência artificial?"><span class="suggestion-icon blue">⌘</span><span><small>TECNOLOGIA</small><strong>O que é inteligência artificial?</strong></span><span class="suggestion-arrow">↗</span></button>
-      <button class="suggestion" data-prompt="Como surgiu a internet?"><span class="suggestion-icon orange">◷</span><span><small>HISTÓRIA</small><strong>Como surgiu a internet?</strong></span><span class="suggestion-arrow">↗</span></button>
-      <button class="suggestion" data-prompt="Como funciona um buraco negro?"><span class="suggestion-icon purple">✦</span><span><small>ESPAÇO</small><strong>Como funciona um buraco negro?</strong></span><span class="suggestion-arrow">↗</span></button>
-    </section>
-    <section class="results" id="results" aria-live="polite"></section>
-    <footer class="page-footer"><span class="status-dot"></span><span id="statusText">Pronta para pesquisar</span><span class="footer-separator">·</span><span>Fontes da Wikipédia</span></footer>
-  </main>
-</div>
-<div class="toast-region" id="toastRegion" aria-live="polite"></div>
-<script src="script.js" defer></script>
-</body>
-</html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#212121"><title>Wiki AI</title><link rel="stylesheet" href="style.css"></head>
+<body><div class="app"><aside class="sidebar" id="sidebar"><div class="side-top"><a class="brand" href="./"><span class="brand-icon">✳</span> Wiki AI</a><button class="icon-button" id="closeSidebar">‹</button></div><button class="new-chat" id="newChat">＋ Nova conversa</button><div class="history-heading">Recentes</div><div class="history" id="history"></div><div class="sidebar-bottom"><div class="user-avatar" id="userAvatar">W</div><div class="user-details"><strong id="userName">Visitante</strong><small id="userEmail">Histórico neste dispositivo</small></div><button class="icon-button" id="accountMenu">⋯</button></div></aside>
+<main class="main"><header class="topbar"><button class="icon-button mobile-menu" id="mobileMenu">☰</button><div class="model-picker">Wiki AI <span class="model-badge">Beta</span></div><div class="top-actions"><button class="icon-button" id="themeButton" title="Mudar tema">☼</button><button class="login-button" id="loginButton">Entrar</button></div></header>
+<div class="chat-area" id="chatArea"><section class="welcome" id="welcome"><div class="welcome-symbol">✳</div><h1>O que vamos explorar hoje?</h1><p>Converse comigo, tire dúvidas ou descubra algo novo.</p><div class="prompt-grid"><button class="prompt-card" data-prompt="Oi!"><span class="prompt-icon">☻</span><span><strong>Vamos conversar</strong><small>Comece com um oi</small></span><span class="prompt-arrow">↗</span></button><button class="prompt-card" data-prompt="Me conte uma curiosidade interessante."><span class="prompt-icon">✦</span><span><strong>Uma curiosidade</strong><small>Aprenda algo inesperado</small></span><span class="prompt-arrow">↗</span></button><button class="prompt-card" data-prompt="O que é inteligência artificial?"><span class="prompt-icon">⌘</span><span><strong>Explorar tecnologia</strong><small>Entenda como funciona</small></span><span class="prompt-arrow">↗</span></button><button class="prompt-card" data-prompt="Me ajude a pensar em uma ideia legal de projeto."><span class="prompt-icon">↗</span><span><strong>Criar alguma coisa</strong><small>Ideias para seu projeto</small></span><span class="prompt-arrow">↗</span></button></div></section><section class="messages" id="messages" aria-live="polite"></section></div>
+<div class="composer-area"><form class="composer" id="chatForm"><textarea id="messageInput" rows="1" maxlength="1000" placeholder="Envie uma mensagem para a Wiki AI"></textarea><div class="composer-bottom"><span class="composer-note"><span class="status-dot"></span> Wikipédia como fonte quando útil</span><button class="send-button" id="sendButton" type="submit" aria-label="Enviar">↑</button></div></form><p class="disclaimer">A Wiki AI pode cometer erros. Confira informações importantes nas fontes.</p></div></main></div>
+<div class="modal-backdrop" id="authModal" hidden><section class="auth-modal" role="dialog" aria-modal="true"><button class="icon-button modal-close" id="closeAuth">×</button><div class="auth-logo">✳</div><h2 id="authTitle">Entre na Wiki AI</h2><p class="auth-subtitle">Entre com Google para personalizar sua experiência.</p><button class="google-button" id="googleButton"><span class="google-g">G</span> Continuar com Google</button><p class="auth-note" id="authNote">Configure o Firebase no script.js para ativar o login.</p><button class="guest-button" id="guestButton">Continuar sem conta</button><button class="logout-button" id="logoutButton" hidden>Sair da conta</button></section></div><div class="toast-region" id="toastRegion"></div>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script><script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script><script src="script.js" defer></script></body></html>
