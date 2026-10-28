@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#090c18"><title>{{ 'Criar conta' if mode == 'register' else 'Entrar' }} — Wiki AI</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"></head>
+<body class="auth-body"><main class="auth-card">
+<a class="brand auth-brand" href="{{ url_for('index') }}"><span class="brand-mark">W</span><span><strong>WIKI AI</strong><small>KNOWLEDGE SYSTEM</small></span></a>
+<p class="eyebrow accent">{{ 'COMECE SUA JORNADA' if mode == 'register' else 'BEM-VINDO DE VOLTA' }}</p><h1>{{ 'Crie sua conta' if mode == 'register' else 'Entre na sua conta' }}</h1><p class="auth-description">{{ 'Salve suas pesquisas e continue de onde parou.' if mode == 'register' else 'Acesse suas conversas e pesquisas salvas.' }}</p>
+{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}<div class="flash-list">{% for category, message in messages %}<div class="flash {{ category }}">{{ message }}</div>{% endfor %}</div>{% endif %}{% endwith %}
+{% if google_enabled %}<a class="google-button" href="{{ url_for('google_login') }}"><span class="google-g">G</span> Continuar com Google</a><div class="auth-divider"><span>ou use seu e-mail</span></div>{% endif %}
+<form class="auth-form" method="post">
+{% if mode == 'register' %}<label for="name">Nome</label><input id="name" name="name" autocomplete="name" maxlength="80" required>{% endif %}
+<label for="email">E-mail</label><input id="email" name="email" type="email" autocomplete="email" maxlength="254" required>
+<label for="password">Senha</label><input id="password" name="password" type="password" autocomplete="{{ 'new-password' if mode == 'register' else 'current-password' }}" minlength="{{ 8 if mode == 'register' else 1 }}" required>
+{% if mode == 'register' %}<small class="field-hint">Use pelo menos 8 caracteres.</small>{% endif %}
+<button class="primary-button auth-submit" type="submit">{{ 'Criar conta' if mode == 'register' else 'Entrar' }} <span>→</span></button></form>
+<p class="auth-switch">{% if mode == 'register' %}Já tem uma conta? <a href="{{ url_for('login') }}">Entrar</a>{% else %}Ainda não tem conta? <a href="{{ url_for('register') }}">Criar conta</a>{% endif %}</p><a class="back-link" href="{{ url_for('index') }}">← Voltar para a Wiki AI</a>
+</main></body></html>
