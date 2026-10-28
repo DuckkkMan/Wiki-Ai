@@ -40,7 +40,7 @@ async function answer(raw){
   const topic=extractTopic(raw);
   try{
    const results=await googleSearch(topic);
-   if(results.length){const text="Pesquisei na web sobre "+topic+". Aqui estão os resultados mais relevantes que consegui encontrar:\\n\\n"+results.map((r,i)=>(i+1)+". "+r.title+(r.snippet?"\n"+r.snippet:"")).join("\n\n")+"\\n\\nEstes são trechos dos resultados da pesquisa, não uma resposta gerada por uma IA. Abra as fontes para conferir os detalhes.";return{text,source:{title:"Ver resultados no Google",url:"https://www.google.com/search?q="+encodeURIComponent(topic)}}}
+   if(results.length){const text="Pesquisei na web sobre "+topic+". Aqui estão os resultados mais relevantes que consegui encontrar:\n\n"+results.map((r,i)=>(i+1)+". "+r.title+(r.snippet?"\n"+r.snippet:"")+"\nFonte: "+r.url).join("\n\n")+"\n\nEstes são trechos dos resultados da pesquisa, não uma resposta gerada por uma IA. Abra as fontes para conferir os detalhes.";return{text,source:{title:"Ver resultados no Google",url:"https://www.google.com/search?q="+encodeURIComponent(topic)}}}
   }catch(e){console.warn("Pesquisa Google falhou:",e)}
   try{const a=await wiki(topic);if(a)return{text:a.text,source:{title:a.title,url:a.url}};return{text:"Não encontrei resultados úteis. Tente usar palavras mais específicas ou abrir a pesquisa do Google.",source:{title:"Pesquisar no Google",url:"https://www.google.com/search?q="+encodeURIComponent(topic)}}}
   catch(e){return{text:"Não consegui acessar a pesquisa agora. Você pode abrir os resultados diretamente no Google.",source:{title:"Pesquisar no Google",url:"https://www.google.com/search?q="+encodeURIComponent(topic)}}}
