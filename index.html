@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#090c18">
+  <meta name="description" content="Wiki AI — explore assuntos, encontre artigos e descubra conhecimento na Wikipédia.">
+  <title>Wiki AI — Centro de conhecimento</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar" id="sidebar">
+    <a class="brand" href="./" aria-label="Wiki AI início"><span class="brand-mark">W</span><span><strong>WIKI AI</strong><small>KNOWLEDGE SYSTEM</small></span></a>
+    <button class="new-chat" id="newChat"><span>＋</span> Nova pesquisa</button>
+    <div class="section-label">PESQUISAS RECENTES</div>
+    <div class="history" id="history"></div>
+    <div class="sidebar-bottom"><span class="online-dot"></span><span>WIKI AI <span class="muted">• STATIC WEB</span></span></div>
+  </aside>
+  <main class="main">
+    <header class="topbar">
+      <button class="mobile-menu" id="mobileMenu" aria-label="Abrir menu">☰</button>
+      <span class="eyebrow">CENTRO DE CONHECIMENTO</span>
+      <div class="account-area"><button class="text-button" id="themeButton" title="Alternar aparência">◐ Aparência</button><button class="text-button" id="clearHistory">Limpar histórico</button></div>
+    </header>
+    <section class="welcome" id="welcome">
+      <div class="sparkle">✳</div><p class="eyebrow accent">CURIOSIDADE É O COMEÇO DE TUDO</p>
+      <h1>Descubra algo <span>novo.</span></h1>
+      <p class="welcome-subtitle">Conhecimento a um clique de distância.</p>
+    </section>
+    <section class="search-wrap" aria-label="Pesquisa">
+      <form class="search-box" id="askForm"><span class="search-icon">⌕</span><input id="question" maxlength="250" autocomplete="off" placeholder="O que você quer descobrir hoje?" aria-label="Sua pergunta"><button class="primary-button" id="askButton" type="submit">PESQUISAR <span>↗</span></button></form>
+      <div class="search-hint">Pesquisa em artigos da Wikipédia em português · Gratuito</div>
+    </section>
+    <section class="suggestions" id="suggestions" aria-label="Sugestões">
+      <button class="suggestion" data-prompt="Como funciona a fotossíntese?"><span class="suggestion-icon green">✳</span><span><small>CIÊNCIA</small><strong>Como funciona a fotossíntese?</strong></span><span class="suggestion-arrow">↗</span></button>
+      <button class="suggestion" data-prompt="O que é inteligência artificial?"><span class="suggestion-icon blue">⌘</span><span><small>TECNOLOGIA</small><strong>O que é inteligência artificial?</strong></span><span class="suggestion-arrow">↗</span></button>
+      <button class="suggestion" data-prompt="Como surgiu a internet?"><span class="suggestion-icon orange">◷</span><span><small>HISTÓRIA</small><strong>Como surgiu a internet?</strong></span><span class="suggestion-arrow">↗</span></button>
+      <button class="suggestion" data-prompt="Como funciona um buraco negro?"><span class="suggestion-icon purple">✦</span><span><small>ESPAÇO</small><strong>Como funciona um buraco negro?</strong></span><span class="suggestion-arrow">↗</span></button>
+    </section>
+    <section class="results" id="results" aria-live="polite"></section>
+    <footer class="page-footer"><span class="status-dot"></span><span id="statusText">Pronta para pesquisar</span><span class="footer-separator">·</span><span>Fontes da Wikipédia</span></footer>
+  </main>
+</div>
+<div class="toast-region" id="toastRegion" aria-live="polite"></div>
+<script src="script.js" defer></script>
+</body>
+</html>
