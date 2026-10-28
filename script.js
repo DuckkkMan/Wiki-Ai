@@ -1,146 +1,26 @@
 (() => {
-  "use strict";
-  const $ = (selector) => document.querySelector(selector);
-  const form = $("#askForm"), input = $("#question"), askButton = $("#askButton");
-  const welcome = $("#welcome"), suggestions = $("#suggestions"), results = $("#results");
-  const statusText = $("#statusText"), history = $("#history"), toastRegion = $("#toastRegion");
-  const sidebar = $("#sidebar");
-  const STORAGE_KEY = "wiki-ai-static-v1";
-  let activeId = null, busy = false, historyItems = loadHistory();
-
-  function loadHistory() {
-    try { const value = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); return Array.isArray(value) ? value : []; }
-    catch { return []; }
-  }
-  function saveHistory() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(historyItems.slice(0, 40))); }
-    catch { toast("O navegador não permitiu salvar o histórico.", "error"); }
-  }
-  function toast(message, type = "") {
-    const item = document.createElement("div");
-    item.className = "toast " + type; item.textContent = message; toastRegion.appendChild(item);
-    window.setTimeout(() => item.remove(), 4000);
-  }
-  function showResults() { welcome.hidden = true; suggestions.hidden = true; results.style.display = "block"; }
-  function addMessage(label, text, kind, source) {
-    const card = document.createElement("article"); card.className = "message " + (kind === "user" ? "user-message" : "");
-    const heading = document.createElement("div"); heading.className = "message-label"; heading.textContent = label;
-    const content = document.createElement("div"); content.className = "message-content"; content.textContent = text;
-    card.append(heading, content);
-    if (source?.url && source?.title) {
-      const link = document.createElement("a"); link.className = "source-link";
-      link.href = source.url; link.target = "_blank"; link.rel = "noopener noreferrer";
-      link.textContent = "↗ Fonte: " + source.title + " (Wikipédia)"; card.appendChild(link);
-    }
-    results.appendChild(card); card.scrollIntoView({behavior:"smooth", block:"nearest"}); return card;
-  }
-  function renderHistory() {
-    history.replaceChildren();
-    if (!historyItems.length) {
-      const empty = document.createElement("p"); empty.className = "history-empty";
-      empty.textContent = "Suas pesquisas aparecerão aqui neste navegador."; history.appendChild(empty); return;
-    }
-    historyItems.forEach((item) => {
-      const row = document.createElement("div"); row.className = "history-row"; row.dataset.id = item.id;
-      const open = document.createElement("button"); open.className = "history-item"; open.title = item.title;
-      const symbol = document.createElement("span"); symbol.textContent = "⌕";
-      const title = document.createElement("span"); title.textContent = item.title;
-      open.append(symbol, title); open.addEventListener("click", () => openConversation(item.id));
-      const del = document.createElement("button"); del.className = "delete-chat"; del.textContent = "×";
-      del.title = "Excluir pesquisa"; del.setAttribute("aria-label", "Excluir pesquisa");
-      del.addEventListener("click", () => {
-        historyItems = historyItems.filter((entry) => entry.id !== item.id); saveHistory(); renderHistory();
-        if (activeId === item.id) startNewChat();
-      });
-      row.append(open, del); history.appendChild(row);
-    });
-  }
-  function openConversation(id) {
-    const item = historyItems.find((entry) => entry.id === id); if (!item) return;
-    activeId = id; results.replaceChildren(); showResults();
-    item.messages.forEach((message) => addMessage(message.role === "user" ? "SUA PERGUNTA" : "WIKI AI", message.text, message.role, message.source));
-    statusText.textContent = "Pesquisa carregada do histórico"; sidebar.classList.remove("open");
-  }
-  function startNewChat() {
-    activeId = null; results.replaceChildren(); results.style.display = "none";
-    welcome.hidden = false; suggestions.hidden = false; statusText.textContent = "Pronta para pesquisar";
-    input.value = ""; input.focus(); sidebar.classList.remove("open");
-  }
-  function extractPlainText(html) {
-    const doc = new DOMParser().parseFromString(html || "", "text/html");
-    doc.querySelectorAll("sup, style, script").forEach((node) => node.remove());
-    return (doc.body.textContent || "").replace(/\[\d+\]/g, "").replace(/\s+/g, " ").trim();
-  }
-  async function searchWikipedia(question) {
-    const endpoint = "https://pt.wikipedia.org/w/api.php";
-    const params = new URLSearchParams({
-      action:"query", list:"search", srsearch:question, srlimit:"1",
-      format:"json", origin:"*", utf8:"1"
-    });
-    const searchResponse = await fetch(endpoint + "?" + params.toString());
-    if (!searchResponse.ok) throw new Error("A Wikipédia não respondeu. Tente novamente.");
-    const searchData = await searchResponse.json();
-    const hit = searchData?.query?.search?.[0];
-    if (!hit) throw new Error("Não encontrei um artigo. Experimente outras palavras-chave.");
-    const summaryParams = new URLSearchParams({
-      action:"query", prop:"extracts", exintro:"1", explaintext:"1",
-      redirects:"1", titles:hit.title, format:"json", origin:"*", utf8:"1"
-    });
-    const summaryResponse = await fetch(endpoint + "?" + summaryParams.toString());
-    if (!summaryResponse.ok) throw new Error("Encontrei o artigo, mas não consegui carregar o resumo.");
-    const summaryData = await summaryResponse.json();
-    const page = Object.values(summaryData?.query?.pages || {})[0];
-    let text = extractPlainText(page?.extract);
-    if (!text) throw new Error("O artigo não tem um resumo disponível. Tente outra pesquisa.");
-    if (text.length > 2800) text = text.slice(0, 2800).replace(/\s+\S*$/, "") + "…";
-    return {title:page?.title || hit.title, text, url:"https://pt.wikipedia.org/wiki/" + encodeURIComponent((page?.title || hit.title).replace(/ /g, "_")).replace(/%28/g,"(").replace(/%29/g,")")};
-  }
-  async function sendQuestion(rawQuestion) {
-    const question = rawQuestion.trim(); if (busy || !question) return;
-    if (question.length > 250) { toast("A pergunta pode ter no máximo 250 caracteres.", "error"); return; }
-    busy = true; askButton.disabled = true; askButton.innerHTML = "PESQUISANDO…";
-    showResults(); addMessage("SUA PERGUNTA", question, "user");
-    const loading = addMessage("WIKI AI", "Consultando a Wikipédia…", "assistant");
-    const dots = document.createElement("div"); dots.className = "loading-dots";
-    dots.innerHTML = "<span></span><span></span><span></span>"; loading.appendChild(dots);
-    statusText.textContent = "Pesquisando na Wikipédia…";
-    try {
-      const article = await searchWikipedia(question);
-      loading.remove(); addMessage("WIKI AI · " + article.title.toUpperCase(), article.text, "assistant", {title:article.title,url:article.url});
-      let item = historyItems.find((entry) => entry.id === activeId);
-      if (!item) {
-        item = {id:crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), title:question.slice(0,58), messages:[]};
-        historyItems.unshift(item); activeId = item.id;
-      }
-      item.title = item.messages.length ? item.title : question.slice(0,58);
-      item.messages.push({role:"user",text:question},{role:"assistant",text:article.text,source:{title:article.title,url:article.url}});
-      item.updatedAt = Date.now(); historyItems = historyItems.filter((entry) => entry.id !== item.id).concat(historyItems.filter((entry) => entry.id === item.id));
-      historyItems.sort((a,b) => (b.updatedAt || 0) - (a.updatedAt || 0)); historyItems = historyItems.slice(0,40);
-      saveHistory(); renderHistory(); statusText.textContent = "Resposta recebida";
-    } catch (error) {
-      loading.remove(); addMessage("PESQUISA NÃO CONCLUÍDA", error.message || "Ocorreu um erro inesperado.", "assistant");
-      statusText.textContent = "Não foi possível concluir"; toast(error.message || "Erro inesperado.", "error");
-    } finally {
-      busy = false; askButton.disabled = false; askButton.innerHTML = 'PESQUISAR <span>↗</span>';
-      input.value = ""; input.focus();
-    }
-  }
-  form.addEventListener("submit", (event) => { event.preventDefault(); sendQuestion(input.value); });
-  document.querySelectorAll("[data-prompt]").forEach((button) => button.addEventListener("click", () => sendQuestion(button.dataset.prompt)));
-  $("#newChat").addEventListener("click", startNewChat);
-  $("#clearHistory").addEventListener("click", () => {
-    if (!historyItems.length) { toast("O histórico já está vazio."); return; }
-    if (!window.confirm("Apagar todas as pesquisas salvas neste navegador?")) return;
-    historyItems = []; saveHistory(); renderHistory(); startNewChat(); toast("Histórico apagado.");
-  });
-  $("#mobileMenu").addEventListener("click", () => sidebar.classList.toggle("open"));
-  $("#themeButton").addEventListener("click", () => {
-    const light = document.body.classList.toggle("light-mode");
-    try { localStorage.setItem("wiki-ai-theme", light ? "light" : "dark"); } catch {}
-  });
-  try { if (localStorage.getItem("wiki-ai-theme") === "light") document.body.classList.add("light-mode"); } catch {}
-  document.addEventListener("click", (event) => {
-    if (window.innerWidth <= 680 && sidebar.classList.contains("open") && !sidebar.contains(event.target) && !$("#mobileMenu").contains(event.target)) sidebar.classList.remove("open");
-  });
-  renderHistory();
+"use strict";
+const FIREBASE_CONFIG={apiKey:"COLOQUE_SUA_FIREBASE_API_KEY",authDomain:"COLOQUE_SEU_PROJETO.firebaseapp.com",projectId:"COLOQUE_SEU_PROJETO",appId:"COLOQUE_SEU_FIREBASE_APP_ID"};
+const $=s=>document.querySelector(s), sidebar=$("#sidebar"), chatArea=$("#chatArea"), welcome=$("#welcome"), messages=$("#messages"), input=$("#messageInput"), form=$("#chatForm"), send=$("#sendButton"), historyEl=$("#history"), toastBox=$("#toastRegion");
+const KEY="wiki-ai-chats-v3",THEME="wiki-ai-theme-v3";let chats=read(KEY,[]),active=null,busy=false,auth=null,user=null;
+function read(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}}function save(){try{localStorage.setItem(KEY,JSON.stringify(chats))}catch{toast("Não foi possível salvar o histórico.",true)}}
+function toast(t,err=false){const e=document.createElement("div");e.className="toast"+(err?" error":"");e.textContent=t;toastBox.append(e);setTimeout(()=>e.remove(),4000)}
+function showChat(){welcome.hidden=true;messages.style.display="flex"}function newChat(){active=null;messages.replaceChildren();messages.style.display="none";welcome.hidden=false;input.value="";resize();input.focus();sidebar.classList.remove("open")}
+function resize(){input.style.height="auto";input.style.height=Math.min(input.scrollHeight,180)+"px"}function scroll(){requestAnimationFrame(()=>chatArea.scrollTop=chatArea.scrollHeight)}
+function render(role,text,source=null){const row=document.createElement("article");row.className="message "+role;const av=document.createElement("div");av.className="message-avatar";av.textContent=role==="user"?(user?.displayName?.[0]?.toUpperCase()||"V"):"✳";const body=document.createElement("div");body.className="message-body";const label=document.createElement("div");label.className="message-role";label.textContent=role==="user"?(user?.displayName||"Você"):"Wiki AI";const content=document.createElement("div");content.className="message-text";content.textContent=text;body.append(label,content);if(source?.url){const a=document.createElement("a");a.className="source-link";a.href=source.url;a.target="_blank";a.rel="noopener noreferrer";a.textContent="↗ "+source.title+" · Wikipédia";body.append(a)}row.append(av,body);messages.append(row);scroll();return row}
+function renderHistory(){historyEl.replaceChildren();if(!chats.length){const p=document.createElement("p");p.className="history-empty";p.textContent="Suas conversas aparecerão aqui.";historyEl.append(p);return}chats.sort((a,b)=>b.time-a.time).forEach(c=>{const row=document.createElement("div");row.className="history-row"+(c.id===active?" active":"");const b=document.createElement("button");b.className="history-item";b.textContent="◷  "+c.title;b.title=c.title;b.onclick=()=>openChat(c.id);const d=document.createElement("button");d.className="delete-chat";d.textContent="×";d.title="Excluir";d.onclick=()=>{chats=chats.filter(x=>x.id!==c.id);save();renderHistory();if(active===c.id)newChat()};row.append(b,d);historyEl.append(row)})}
+function openChat(id){const c=chats.find(x=>x.id===id);if(!c)return;active=id;messages.replaceChildren();showChat();c.items.forEach(m=>render(m.role,m.text,m.source));renderHistory();sidebar.classList.remove("open")}
+function add(role,text,source){let c=chats.find(x=>x.id===active);if(!c){c={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),title:text.slice(0,42),items:[],time:Date.now()};chats.unshift(c);active=c.id}c.items.push({role,text,source});c.time=Date.now();if(role==="user"&&c.items.length===1)c.title=text.slice(0,42);chats=chats.slice(0,50);save();renderHistory()}
+function typing(){const row=render("assistant","");const t=row.querySelector(".message-text"),dots=document.createElement("div");dots.className="typing";for(let i=0;i<3;i++)dots.append(document.createElement("span"));t.append(dots);return row}
+function norm(s){return s.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\p{L}\p{N}\s]/gu," ").replace(/\s+/g," ").trim()}
+function smallTalk(raw){const q=norm(raw);if(/^(oi|ola|opa|eai|e ae|iae|hey|hello|bom dia|boa tarde|boa noite|salve|fala|tudo bem|como vai)(\s|$)/.test(q))return ["Oi! 😊 Como você está? Pode conversar comigo normalmente ou perguntar algo que esteja curioso para saber.","Olá! Que bom ter você por aqui. O que você gostaria de fazer hoje?","Opa! Tudo certo por aqui. Pode mandar sua pergunta ou só bater papo mesmo!"][Math.floor(Math.random()*3)];if(/^(obrigado|obrigada|valeu|brigado|brigada|thanks)(\s|$)/.test(q))return"Por nada! 😊 Se precisar de mais alguma coisa, é só falar.";if(/^(tchau|ate mais|falou|fui)$/.test(q))return"Até mais! 👋 Quando quiser conversar ou descobrir algo novo, estarei por aqui.";if(/^(quem e voce|qual seu nome|o que e voce|voce e uma ia|quem te criou)$/.test(q))return"Eu sou a Wiki AI, um chatbot experimental. Consigo conversar sobre mensagens simples e pesquisar artigos da Wikipédia. Ainda não tenho um modelo generativo completo conectado, então tenho algumas limitações.";if(/^(tudo bem|como voce esta|como vai voce)$/.test(q))return"Tudo bem por aqui! 😊 E com você?";if(/^(kkkk+|haha+|rsrs+|lol)$/.test(q))return"😂 Hahaha! Conta aí!";if(/^(sim|nao|talvez|entendi|ata|ah|ok|okay|beleza|legal|massa|show)$/.test(q))return"Entendi! 🙂 Quer me contar mais ou tem outra coisa em mente?";if(/^(me ajuda|pode me ajudar|preciso de ajuda)$/.test(q))return"Claro! Me conta com o que você precisa de ajuda e vamos por partes.";if(/^(me conte uma curiosidade|curiosidade interessante)$/.test(q))return"Uma curiosidade: polvos têm três corações, e parte do sangue deles é azul por causa de uma proteína que transporta oxigênio.";return null}
+function shouldSearch(raw){const q=norm(raw);return /^(o que|quem|como|por que|porque|qual|quais|onde|quando|me fale sobre|me conta sobre|explique|defina|pesquise|pesquisa|procure|busque|significado de|para que serve|historia de|me explique)\b/.test(q)||/\b(wikipedia|artigo sobre|pesquise sobre|pesquisa sobre|me fale sobre|me conta sobre)\b/.test(q)}
+async function wiki(query){const base="https://pt.wikipedia.org/w/api.php",p=new URLSearchParams({action:"query",list:"search",srsearch:query,srlimit:"1",format:"json",origin:"*",utf8:"1"}),res=await fetch(base+"?"+p);if(!res.ok)throw Error("A Wikipédia não respondeu agora.");const data=await res.json(),hit=data?.query?.search?.[0];if(!hit)return null;const p2=new URLSearchParams({action:"query",prop:"extracts",exintro:"1",explaintext:"1",redirects:"1",titles:hit.title,format:"json",origin:"*",utf8:"1"}),r2=await fetch(base+"?"+p2);if(!r2.ok)throw Error("Não consegui carregar o artigo.");const d2=await r2.json(),page=Object.values(d2?.query?.pages||{})[0];let text=String(page?.extract||"").replace(/\s+/g," ").trim();if(!text)return null;if(text.length>2600)text=text.slice(0,2600).replace(/\s+\S*$/,"")+"…";const title=page?.title||hit.title;return{title,text,url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent(title.replace(/ /g,"_"))}}
+async function answer(raw){const local=smallTalk(raw);if(local)return{text:local};if(shouldSearch(raw)){try{const a=await wiki(raw);if(a)return{text:a.text,source:{title:a.title,url:a.url}};return{text:"Não encontrei um artigo na Wikipédia. Tente perguntar de outro jeito ou usar termos mais específicos."}}catch(e){return{text:(e.message||"Não consegui pesquisar agora.")+" Você ainda pode conversar comigo normalmente."}}}return{text:"Posso conversar com você normalmente! 😊 Nesta versão, consigo responder a saudações, agradecimentos e algumas mensagens simples. Para perguntas informativas, tente “O que é inteligência artificial?” ou “Como funciona a internet?”. Ainda não tenho um modelo generativo conectado para conversar sobre qualquer assunto com a mesma profundidade do ChatGPT."}}
+async function sendMessage(raw){const text=raw.trim();if(!text||busy)return;busy=true;send.disabled=true;showChat();render("user",text);add("user",text);input.value="";resize();const load=typing();try{const a=await answer(text);load.remove();render("assistant",a.text,a.source);add("assistant",a.text,a.source)}catch(e){load.remove();render("assistant","Ops, algo deu errado. Tente novamente.");toast(e.message||"Erro inesperado.",true)}finally{busy=false;send.disabled=false;input.focus()}}
+function theme(t){document.body.classList.toggle("light-mode",t==="light");$("#themeButton").textContent=t==="light"?"☾":"☼";try{localStorage.setItem(THEME,t)}catch{}}
+function showAuth(){$("#authModal").hidden=false;$("#logoutButton").hidden=!user;$("#googleButton").hidden=!!user;$("#guestButton").hidden=!!user;$("#authTitle").textContent=user?"Conta conectada":"Entre na Wiki AI"}
+function updateUser(u){user=u||null;$("#userName").textContent=u?.displayName||"Visitante";$("#userEmail").textContent=u?.email||"Histórico neste dispositivo";$("#loginButton").textContent=u?"Minha conta":"Entrar";const av=$("#userAvatar");av.replaceChildren();if(u?.photoURL){const img=document.createElement("img");img.src=u.photoURL;img.alt="";av.append(img)}else av.textContent=u?.displayName?.[0]?.toUpperCase()||"W";$("#logoutButton").hidden=!u;$("#googleButton").hidden=!!u;$("#guestButton").hidden=!!u;$("#authNote").textContent=u?(u.email||"Você entrou com Google."):"Configure o Firebase no script.js para ativar o login."}
+function initAuth(){const configured=FIREBASE_CONFIG.apiKey!=="COLOQUE_SUA_FIREBASE_API_KEY"&&FIREBASE_CONFIG.projectId!=="COLOQUE_SEU_PROJETO"&&FIREBASE_CONFIG.appId!=="COLOQUE_SEU_FIREBASE_APP_ID";if(!configured){$("#googleButton").onclick=()=>toast("Login Google não configurado. Siga as instruções do README.",true);return}try{if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();auth.onAuthStateChanged(updateUser);$("#authNote").textContent="Login seguro gerenciado pelo Firebase.";$("#googleButton").onclick=async()=>{try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());$("#authModal").hidden=true;toast("Login com Google realizado!")}catch(e){toast(e.message||"Falha ao entrar com Google.",true)}}}catch(e){$("#authNote").textContent=e.message}}
+form.onsubmit=e=>{e.preventDefault();sendMessage(input.value)};input.addEventListener("input",resize);input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();form.requestSubmit()}});document.querySelectorAll("[data-prompt]").forEach(b=>b.onclick=()=>sendMessage(b.dataset.prompt));$("#newChat").onclick=newChat;$("#themeButton").onclick=()=>theme(document.body.classList.contains("light-mode")?"dark":"light");$("#mobileMenu").onclick=()=>sidebar.classList.toggle("open");$("#closeSidebar").onclick=()=>sidebar.classList.remove("open");$("#loginButton").onclick=showAuth;$("#accountMenu").onclick=showAuth;$("#closeAuth").onclick=()=>$("#authModal").hidden=true;$("#guestButton").onclick=()=>$("#authModal").hidden=true;$("#logoutButton").onclick=async()=>{try{if(auth)await auth.signOut();updateUser(null);$("#authModal").hidden=true;toast("Você saiu da conta.")}catch(e){toast(e.message,true)}};$("#authModal").onclick=e=>{if(e.target.id==="authModal")e.currentTarget.hidden=true};document.addEventListener("keydown",e=>{if(e.key==="Escape"){sidebar.classList.remove("open");$("#authModal").hidden=true}});theme(read(THEME,"dark"));renderHistory();initAuth();
 })();
