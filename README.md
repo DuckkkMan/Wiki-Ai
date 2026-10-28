@@ -1,28 +1,26 @@
-# Wiki AI — site estático
+# Wiki AI — GitHub Pages
 
-A Wiki AI roda diretamente no navegador usando **HTML, CSS e JavaScript**, e pode ser publicada no GitHub Pages sem servidor Python.
+Chatbot estático em HTML, CSS e JavaScript, com interface inspirada em chats modernos, tema claro/escuro, histórico local e pesquisa na Wikipédia.
 
-## Publicar no GitHub Pages
+## Publicar
+1. Abra **Settings → Pages**.
+2. Selecione **Deploy from a branch**, branch `main` e pasta `/(root)`.
+3. Salve e aguarde o endereço aparecer na página.
 
-1. Abra **Settings** do repositório.
-2. Entre em **Pages**.
-3. Em **Build and deployment**, selecione **Deploy from a branch**.
-4. Selecione a branch principal (normalmente \`main\`) e a pasta **/(root)**.
-5. Clique em **Save** e aguarde a publicação. O endereço aparecerá na mesma página.
+## Ativar login Google
+1. Crie um projeto em https://console.firebase.google.com/.
+2. Em **Authentication → Sign-in method**, habilite **Google**.
+3. Em **Authentication → Settings → Authorized domains**, adicione `duckkkman.github.io`.
+4. Adicione um aplicativo Web nas configurações do projeto e copie a configuração Firebase.
+5. No começo de `script.js`, substitua os valores de `FIREBASE_CONFIG` por `apiKey`, `authDomain`, `projectId` e `appId` do seu projeto.
+6. Faça commit e aguarde o Pages atualizar.
 
-O arquivo \`index.html\` precisa ficar na raiz do repositório — ele já está preparado assim.
+A configuração web do Firebase é feita para uso no cliente, mas restrinja a chave por domínio. Nunca publique credenciais privadas ou chaves de conta de serviço.
 
-## Recursos
-
-- Layout responsivo e tema escuro/claro.
-- Busca na API pública da Wikipédia em português.
-- Links para os artigos originais.
-- Histórico de pesquisas e conversas salvo no \`localStorage\` do navegador.
-- Abrir e apagar pesquisas anteriores.
-- Não exige instalação, Python ou servidor próprio.
-
-## Limites de uma aplicação estática
-
-O histórico fica no navegador atual e não sincroniza entre dispositivos. Não existe cadastro/login seguro ou banco de dados privado nesta versão. Para esses recursos, conecte um serviço de autenticação e backend apropriado; nunca guarde senhas ou chaves secretas no JavaScript público.
-
-A pesquisa usa a Wikipédia como fonte; esta versão não é um modelo generativo de IA. O funcionamento depende de conexão com a internet e da disponibilidade da API da Wikipédia.
+## Recursos e limitações
+- Chat responsivo, tema claro/escuro e histórico salvo neste navegador.
+- Respostas locais para saudações e mensagens simples.
+- Pesquisa na Wikipédia em português com link da fonte.
+- Login Google opcional com Firebase Authentication.
+- Esta versão ainda não usa um modelo generativo completo como o ChatGPT; para isso, é necessário conectar um serviço de IA por um backend seguro.
+- O histórico fica neste navegador. Sincronização entre dispositivos requer banco de dados e regras de acesso.
