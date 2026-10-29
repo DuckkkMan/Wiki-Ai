@@ -41,3 +41,9 @@ body.light-mode .settings-panel{border-color:#ddd}body.light-mode .settings-them
 @media(max-width:700px){.settings-shortcut{width:34px;padding:0}.settings-shortcut span:last-child{display:none}}
 
 .word-limit-control{display:flex;flex-direction:column;gap:6px;min-width:180px}.word-limit-control input{width:100%;box-sizing:border-box}.word-limit-control small{max-width:230px;color:var(--muted);font-size:10px;line-height:1.4}
+
+/* Seletor de modo de pesquisa */
+.composer-tools{display:flex;align-items:center;gap:10px;min-width:0}
+.search-mode{max-width:150px;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:11px;outline:none}
+.search-mode:focus{border-color:#888}
+@media(max-width:700px){.composer-tools{gap:6px}.search-mode{max-width:125px;padding:6px 7px;font-size:10px}.composer-note{font-size:8px}}
