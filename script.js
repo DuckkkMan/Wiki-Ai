@@ -51,34 +51,41 @@ async function wiki(query,signal){
  }
  return null;
 }
-async function googleSearch(query){
- const url="https://r.jina.ai/http://www.google.com/search?q="+encodeURIComponent(query);
- const res=await fetch(url,{headers:{"Accept":"text/plain"}});
- if(!res.ok)throw Error("A pesquisa na web está indisponível agora.");
+async function googleSearch(query,signal){
+ const url="https://r.jina.ai/http://www.google.com/search?hl=pt-BR&gl=br&q="+encodeURIComponent(query);
+ const res=await fetch(url,{signal,headers:{"Accept":"text/plain"}});
+ if(!res.ok)throw Error("A pesquisa do Google não respondeu agora.");
  const page=await res.text();
  const lines=page.split("\n").map(x=>x.trim()).filter(Boolean);
  const results=[];
  for(let i=0;i<lines.length&&results.length<5;i++){
   const m=lines[i].match(/^\[([^\]]{3,180})\]\((https?:\/\/[^)]+)\)$/);
-  if(!m||/google\.com\/search|support\.google|accounts\.google/i.test(m[2]))continue;
-  const url=m[2].replace(/&amp;/g,"&");
+  if(!m||/google\.com\/search|support\.google|accounts\.google|policies\.google/i.test(m[2]))continue;
+  const resultUrl=m[2].replace(/&amp;/g,"&");
   let snippet="";
-  for(let j=i+1;j<Math.min(i+4,lines.length);j++){if(lines[j]&&!lines[j].startsWith("[")&&!lines[j].startsWith("http")&&lines[j].length>35){snippet=lines[j].replace(/\*\*/g,"").slice(0,450);break;}}
-  if(!results.some(x=>x.url===url))results.push({title:m[1],url,snippet});
+  for(let j=i+1;j<Math.min(i+5,lines.length);j++){
+   const line=lines[j].replace(/\*\*/g,"").trim();
+   if(line&&!line.startsWith("[")&&!line.startsWith("http")&&line.length>35){snippet=line.slice(0,500);break;}
+  }
+  if(!results.some(x=>x.url===resultUrl))results.push({title:m[1],url:resultUrl,snippet});
  }
  return results;
 }
 async function answer(raw,signal){
  const local=smallTalk(raw);if(local)return{text:local};
  const topic=shouldSearch(raw)?extractTopic(raw):raw.trim();
- const google={title:"Pesquisar no Google",url:"https://www.google.com/search?q="+encodeURIComponent(raw.trim())};
+ const googleLink={title:"Abrir pesquisa no Google",url:"https://www.google.com/search?q="+encodeURIComponent(raw.trim())};
+ let article=null;
+ try{article=await wiki(topic||raw.trim(),signal)}catch(e){if(signal?.aborted)throw e}
+ if(article)return{text:article.text,source:[{title:"Abrir artigo: "+article.title,url:article.url},googleLink]};
  try{
-  const a=await wiki(topic||raw.trim(),signal);
-  if(a)return{text:(a.random?"Não encontrei um artigo exato para sua pergunta, então aqui vai um artigo aleatório da Wikipédia em português.\n\n":"") + a.text,source:[{title:"Abrir artigo: "+a.title,url:a.url},google]};
-  return{text:"Não encontrei um artigo relacionado a essa pergunta. Tente usar outros termos ou consulte o Google.",source:google};
- }catch(e){
-  return{text:"Não foi possível acessar a Wikipédia no momento. Tente novamente daqui a pouco ou pesquise no Google.",source:google};
- }
+  const results=await googleSearch(topic||raw.trim(),signal);
+  if(results.length){
+   const details=results.map((item,i)=>(i+1)+". "+item.title+(item.snippet?"\n"+item.snippet:"")).join("\n\n");
+   return{text:"Não encontrei uma resposta adequada na Wikipédia, então pesquisei no Google. Estes foram os resultados encontrados:\n\n"+details+"\n\nConfira os links das fontes abaixo para consultar as páginas completas.",source:[...results,googleLink]};
+  }
+ }catch(e){if(signal?.aborted)throw e}
+ return{text:"Não encontrei um artigo adequado na Wikipédia e não consegui obter resultados do Google agora. Você pode abrir a pesquisa diretamente pelo link abaixo.",source:googleLink};
 }
 async function sendMessage(raw){const text=raw.trim();if(!text||busy)return;setBusy(true);const id=++requestId;requestController=new AbortController();const signal=requestController.signal;showChat();render("user",text);add("user",text);input.value="";resize();activeLoadingRow=typing();try{const a=await answer(text,signal);if(id!==requestId||signal.aborted)return;const responseText=limitResponse(a.text);activeLoadingRow?.remove();activeLoadingRow=null;activeResponseItem=add("assistant",responseText,a.source);activeResponseRow=render("assistant",responseText,a.source,true,()=>{if(id===requestId){activeResponseItem=null;activeResponseRow=null;requestController=null;setBusy(false);input.focus()}})}catch(e){if(id!==requestId||signal.aborted)return;activeLoadingRow?.remove();activeLoadingRow=null;render("assistant","Ocorreu um erro ao processar sua mensagem.",null,false,()=>{if(id===requestId){requestController=null;setBusy(false);input.focus()}});toast(e.message||"Erro inesperado.",true)}}
 function theme(t){document.body.classList.toggle("light-mode",t==="light");$("#themeButton").textContent=t==="light"?"☾":"☼";try{localStorage.setItem(THEME,t)}catch{}}
