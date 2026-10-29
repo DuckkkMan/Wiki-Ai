@@ -32,3 +32,10 @@ body.light-mode{color-scheme:light;--bg:#fff;--sidebar:#f7f7f8;--surface:#f4f4f4
 body.light-mode .settings-panel{border-color:#ddd}body.light-mode .settings-theme-card.selected{border-color:#777}
 @media(max-width:650px){.settings-overlay{padding:0;align-items:end}.settings-panel{width:100%;height:min(760px,94dvh);grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);border-radius:22px 22px 0 0}.settings-sidebar{padding:10px 13px 8px;border-right:0;border-bottom:1px solid var(--line)}.settings-brand{display:none}.settings-nav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}.settings-nav-item{justify-content:center;flex-direction:column;gap:5px;padding:7px 3px}.settings-nav-item>span:first-child{width:27px;height:25px}.settings-nav-item>span:last-child{align-items:center;font-size:9px}.settings-nav-item small,.settings-sidebar-bottom{display:none}.settings-panel-header{padding:15px 19px 13px}.settings-panel-header h2{font-size:19px}.settings-scroll{padding:18px 19px}.settings-option{align-items:flex-start;flex-direction:column;gap:12px;padding:15px 0}.settings-option:has(.settings-switch),.settings-option:has(.settings-select){align-items:center;flex-direction:row}.settings-theme-grid{width:100%;max-width:none}.settings-panel-footer{padding:11px 19px}.settings-panel-footer span{font-size:8px}}
 @media(prefers-reduced-motion:reduce){.settings-overlay,.settings-view,.settings-panel{animation:none!important;transition:none!important}}
+
+
+/* Botão de configurações visível na barra superior */
+.settings-shortcut{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);font-size:12px;font-weight:600;white-space:nowrap}
+.settings-shortcut:hover{background:var(--hover);border-color:#777}
+.settings-shortcut span:first-child{font-size:17px;line-height:1}
+@media(max-width:700px){.settings-shortcut{width:34px;padding:0}.settings-shortcut span:last-child{display:none}}
