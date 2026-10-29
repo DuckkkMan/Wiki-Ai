@@ -65,7 +65,7 @@ async function googleSearch(query,signal){
  const lines=page.split("\n").map(x=>x.trim()).filter(Boolean);
  const results=[];
  for(let i=0;i<lines.length&&results.length<5;i++){
-  const m=lines[i].match(/^\[([^\]]{3,180})\]\((https?:\/\/[^)]+)\)$/);
+  const m=lines[i].match(/\[([^\]]{3,180})\]\((https?:\/\/[^)]+)\)/);
   if(!m||/google\.com\/search|support\.google|accounts\.google|policies\.google/i.test(m[2]))continue;
   const resultUrl=m[2].replace(/&amp;/g,"&");
   let snippet="";
