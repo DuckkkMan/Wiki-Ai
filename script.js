@@ -41,8 +41,13 @@ async function wiki(query,signal){
   if(!response.ok)continue;
   const payload=await response.json();
   const page=Object.values(payload?.query?.pages||{})[0];
-  const articleText=String(page?.extract||"").replace(/\\n{3,}/g,"\\n\\n").trim();
-  if(articleText){const words=articleText.match(/\\S+/g)||[];const truncated=words.length>300;let finalText=articleText;if(truncated){const match=/\\S+/.exec(articleText);let end=0;for(let i=0;i<300;i++){const word=/\\S+/g;word.lastIndex=end;const found=word.exec(articleText);if(!found)break;end=word.lastIndex;}finalText=articleText.slice(0,end).trimEnd();}return{title:page?.title||hit.title,text:finalText+(truncated?"\\n\\n[[ARTICLE_TRUNCATED]]O texto foi cortado e é recomendável ver o artigo completo.":""),url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};
+  const articleText=String(page?.extract||"").replace(/\n{3,}/g,"\n\n").trim();
+  if(articleText){
+   const words=[...articleText.matchAll(/\S+/g)];
+   const truncated=words.length>300;
+   const finalText=truncated?articleText.slice(0,words[299].index+words[299][0].length).trimEnd():articleText;
+   return{title:page?.title||hit.title,text:finalText+(truncated?"\n\n[[ARTICLE_TRUNCATED]]O texto foi cortado e é recomendável ver o artigo completo.":""),url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};
+  }
  }
  return null;
 }
