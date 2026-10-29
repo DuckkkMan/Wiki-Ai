@@ -16,7 +16,35 @@ function norm(s){return s.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[
 function smallTalk(raw){const q=norm(raw);if(/^(oi|ola|opa|eai|e ae|iae|hey|hello|bom dia|boa tarde|boa noite|salve|fala|tudo bem|como vai)(\s|$)/.test(q))return ["Oi! 😊 Como você está? Pode conversar comigo normalmente ou perguntar algo que esteja curioso para saber.","Olá! Que bom ter você por aqui. O que você gostaria de fazer hoje?","Opa! Tudo certo por aqui. Pode mandar sua pergunta ou só bater papo mesmo!"][Math.floor(Math.random()*3)];if(/^(obrigado|obrigada|valeu|brigado|brigada|thanks)(\s|$)/.test(q))return"Por nada! 😊 Se precisar de mais alguma coisa, é só falar.";if(/^(tchau|ate mais|falou|fui)$/.test(q))return"Até mais! 👋 Quando quiser conversar ou descobrir algo novo, estarei por aqui.";if(/^(quem e voce|qual seu nome|o que e voce|voce e uma ia|quem te criou)$/.test(q))return"Eu sou a Wiki AI, um chatbot experimental. Consigo conversar sobre mensagens simples e pesquisar artigos da Wikipédia. Ainda não tenho um modelo generativo completo conectado, então tenho algumas limitações.";if(/^(tudo bem|como voce esta|como vai voce)$/.test(q))return"Tudo bem por aqui! 😊 E com você?";if(/^(kkkk+|haha+|rsrs+|lol)$/.test(q))return"😂 Hahaha! Conta aí!";if(/^(sim|nao|talvez|entendi|ata|ah|ok|okay|beleza|legal|massa|show)$/.test(q))return"Entendi! 🙂 Quer me contar mais ou tem outra coisa em mente?";if(/^(me ajuda|pode me ajudar|preciso de ajuda)$/.test(q))return"Claro! Me conta com o que você precisa de ajuda e vamos por partes.";if(/^(me conte uma curiosidade|curiosidade interessante)$/.test(q))return"Uma curiosidade: polvos têm três corações, e parte do sangue deles é azul por causa de uma proteína que transporta oxigênio.";return null}
 function extractTopic(raw){let q=norm(raw);q=q.replace(/^(por favor\s+)?(me diga|me explica|me explique|explique|defina|pesquise|pesquisa|procure|busque|me fale sobre|me conta sobre|fale sobre|conta sobre|o que e|oque e|o que eh|oque eh|quem e|quem foi|quem sao|como funciona|como e|qual e|quais sao|onde fica|quando foi|significado de|historia de|para que serve|me fale|me conte)\s+/,"");q=q.replace(/^(um|uma|o|a|os|as)\s+/,"");const stop=new Set(["um","uma","o","a","os","as","de","do","da","dos","das","e","em","no","na","nos","nas","por","para","com","que","qual","quais","foi","sao","ser","sobre","como","quando","onde","porque","pq","me","se","tem","mais","parte","util","wikipedia","artigo"]);return q.split(" ").filter(w=>w&&!stop.has(w)).join(" ").trim()||q}
 function shouldSearch(raw){const q=norm(raw);return /^(o que|oque|quem|como|por que|porque|qual|quais|onde|quando|me fale|me conta|fale sobre|conta sobre|explique|defina|pesquise|pesquisa|procure|busque|significado de|para que serve|historia de|me explique|me diga)\b/.test(q)||/\b(wikipedia|artigo sobre|pesquise sobre|pesquisa sobre|me fale sobre|me conta sobre)\b/.test(q)}
-async function wiki(query){const base="https://pt.wikipedia.org/w/api.php";const searchParams=new URLSearchParams({action:"query",list:"search",srsearch:query,srlimit:"5",format:"json",origin:"*",utf8:"1"});const res=await fetch(base+"?"+searchParams);if(!res.ok)throw Error("A Wikipédia não respondeu agora.");const data=await res.json();const hits=data?.query?.search||[];if(!hits.length)return null;const candidates=[...hits];let chosen=null;for(const hit of candidates){const params=new URLSearchParams({action:"query",prop:"extracts",explaintext:"1",redirects:"1",titles:hit.title,format:"json",origin:"*",utf8:"1"});const response=await fetch(base+"?"+params);if(!response.ok)continue;const payload=await response.json();const page=Object.values(payload?.query?.pages||{})[0];const text=String(page?.extract||"").replace(/\n{3,}/g,"\n\n").trim();if(text){chosen={title:page?.title||hit.title,text,url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};break}}if(chosen)return chosen;const randomRes=await fetch(base+"?"+new URLSearchParams({action:"query",list:"random",rnnamespace:"0",rnlimit:"1",format:"json",origin:"*",utf8:"1"}));if(randomRes.ok){const randomData=await randomRes.json();const hit=randomData?.query?.random?.[0];if(hit){const p=new URLSearchParams({action:"query",prop:"extracts",explaintext:"1",titles:hit.title,format:"json",origin:"*",utf8:"1"});const rr=await fetch(base+"?"+p);if(rr.ok){const dd=await rr.json();const pg=Object.values(dd?.query?.pages||{})[0];const text=String(pg?.extract||"").replace(/\n{3,}/g,"\n\n").trim();if(text)return{title:pg?.title||hit.title,text,url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((pg?.title||hit.title).replace(/ /g,"_")),random:true}}}}return null}
+async function wiki(query){
+ const base="https://pt.wikipedia.org/w/api.php";
+ const clean=norm(query);
+ if(!clean)return null;
+ const words=clean.split(" ").filter(w=>w.length>2);
+ const searchParams=new URLSearchParams({action:"query",list:"search",srsearch:query,srlimit:"10",format:"json",origin:"*",utf8:"1"});
+ const res=await fetch(base+"?"+searchParams);
+ if(!res.ok)throw Error("A Wikipédia não respondeu agora.");
+ const data=await res.json();
+ const hits=data?.query?.search||[];
+ if(!hits.length)return null;
+ const ranked=hits.map(hit=>{
+  const titleWords=new Set(norm(hit.title).split(" "));
+  const matched=words.filter(word=>titleWords.has(word)).length;
+  const score=words.length?matched/words.length:0;
+  return {...hit,score};
+ }).filter(hit=>hit.score>=0.5).sort((a,b)=>b.score-a.score);
+ if(!ranked.length)return null;
+ for(const hit of ranked.slice(0,3)){
+  const params=new URLSearchParams({action:"query",prop:"extracts",explaintext:"1",redirects:"1",titles:hit.title,format:"json",origin:"*",utf8:"1"});
+  const response=await fetch(base+"?"+params);
+  if(!response.ok)continue;
+  const payload=await response.json();
+  const page=Object.values(payload?.query?.pages||{})[0];
+  const articleText=String(page?.extract||"").replace(/\\n{3,}/g,"\\n\\n").trim();
+  if(articleText)return{title:page?.title||hit.title,text:articleText,url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};
+ }
+ return null;
+}
 async function googleSearch(query){
  const url="https://r.jina.ai/http://www.google.com/search?q="+encodeURIComponent(query);
  const res=await fetch(url,{headers:{"Accept":"text/plain"}});
