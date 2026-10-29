@@ -42,7 +42,7 @@ async function wiki(query,signal){
   const payload=await response.json();
   const page=Object.values(payload?.query?.pages||{})[0];
   const articleText=String(page?.extract||"").replace(/\\n{3,}/g,"\\n\\n").trim();
-  if(articleText)return{title:page?.title||hit.title,text:articleText.slice(0,4500)+(articleText.length>4500?"\\n\\n[Texto resumido para evitar uma resposta excessivamente longa.]":""),url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};
+  if(articleText)return{title:page?.title||hit.title,text:articleText.slice(0,4500)+(articleText.length>4500?"\\n\\n[Trecho limitado para evitar uma resposta excessivamente longa.]":""),url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};
  }
  return null;
 }
