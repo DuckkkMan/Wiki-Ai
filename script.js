@@ -99,7 +99,8 @@ const SEARCH_MODE_KEY="wiki-ai-search-mode-v1";
 function getSearchMode(){const mode=localStorage.getItem(SEARCH_MODE_KEY);return ["auto","wiki","google","local"].includes(mode)?mode:"auto"}
 function formatNumber(value){if(!Number.isFinite(value))return null;return new Intl.NumberFormat("pt-BR",{maximumFractionDigits:10}).format(Object.is(value,-0)?0:value)}
 function calculate(raw){
- let q=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/,/g,".").trim();
+ let q=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/,/g,".").trim().replace(/[?!]+$/,"");
+ const percentOf=q.match(/^(\d+(?:\.\d+)?)\s*%\s*(?:de|do|da)\s*(\d+(?:\.\d+)?)$/);if(percentOf){const result=Number(percentOf[1])*Number(percentOf[2])/100;return "Vamos calcular!\n\n"+percentOf[1]+"% de "+percentOf[2]+" = "+formatNumber(result)}
  q=q.replace(/^(quanto e|quanto da|calcule|calcular|resolva|resolve|resultado de|qual o resultado de|faca|faz)\s+/,"").replace(/\s+(por favor|pra mim)$/,"").trim();
  if(!q||!/[+*/^%]|\d\s*-\s*\d/.test(q)||!/^[\d\s()+\-*/^%.]+$/.test(q))return null;
  const tokens=q.match(/\d+(?:\.\d+)?|[()+\-*/^%]/g);if(!tokens||tokens.join("")!==q.replace(/\s/g,""))return null;
