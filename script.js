@@ -2,27 +2,28 @@
 "use strict";
 const FIREBASE_CONFIG={apiKey:"COLOQUE_SUA_FIREBASE_API_KEY",authDomain:"COLOQUE_SEU_PROJETO.firebaseapp.com",projectId:"COLOQUE_SEU_PROJETO",appId:"COLOQUE_SEU_FIREBASE_APP_ID"};
 const $=s=>document.querySelector(s), sidebar=$("#sidebar"), chatArea=$("#chatArea"), welcome=$("#welcome"), messages=$("#messages"), input=$("#messageInput"), form=$("#chatForm"), send=$("#sendButton"), historyEl=$("#history"), toastBox=$("#toastRegion");
-const KEY="wiki-ai-chats-v3",THEME="wiki-ai-theme-v3";let chats=read(KEY,[]),active=null,busy=false,auth=null,user=null;
+const KEY="wiki-ai-chats-v3",THEME="wiki-ai-theme-v3";let chats=read(KEY,[]),active=null,busy=false,auth=null,user=null,requestId=0,requestController=null,typingTimer=null;
+function cancelPending(){requestId++;if(requestController){requestController.abort();requestController=null}if(typingTimer){clearTimeout(typingTimer);typingTimer=null}busy=false;send.disabled=false;}
 function read(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}}function save(){try{localStorage.setItem(KEY,JSON.stringify(chats))}catch{toast("Não foi possível salvar o histórico.",true)}}
 function toast(t,err=false){const e=document.createElement("div");e.className="toast"+(err?" error":"");e.textContent=t;toastBox.append(e);setTimeout(()=>e.remove(),4000)}
-function showChat(){welcome.hidden=true;messages.style.display="flex"}function newChat(){active=null;messages.replaceChildren();messages.style.display="none";welcome.hidden=false;input.value="";resize();input.focus();sidebar.classList.remove("open")}
+function showChat(){welcome.hidden=true;messages.style.display="flex"}function newChat(){cancelPending();active=null;messages.replaceChildren();messages.style.display="none";welcome.hidden=false;input.value="";resize();input.focus();sidebar.classList.remove("open")}
 function resize(){input.style.height="auto";input.style.height=Math.min(input.scrollHeight,180)+"px"}function scroll(){requestAnimationFrame(()=>chatArea.scrollTop=chatArea.scrollHeight)}
-function render(role,text,source=null,animate=false){const row=document.createElement("article");row.className="message "+role;const av=document.createElement("div");av.className="message-avatar";av.textContent=role==="user"?(user?.displayName?.[0]?.toUpperCase()||"V"):"✳";const body=document.createElement("div");body.className="message-body";const label=document.createElement("div");label.className="message-role";label.textContent=role==="user"?(user?.displayName||"Você"):"Wiki AI";const content=document.createElement("div");content.className="message-text";if(!animate)content.textContent=text;body.append(label,content);const sources=Array.isArray(source)?source:(source?[source]:[]);for(const item of sources){if(!item?.url)continue;const a=document.createElement("a");a.className="source-link";a.href=item.url;a.target="_blank";a.rel="noopener noreferrer";a.textContent="↗ "+item.title;body.append(a)}row.append(av,body);messages.append(row);if(animate){let i=0;const step=()=>{if(!row.isConnected)return;content.textContent+=text.slice(i,i+10);i+=10;scroll();if(i<text.length)setTimeout(step,8)};step()}scroll();return row}
+function render(role,text,source=null,animate=false){const row=document.createElement("article");row.className="message "+role;const av=document.createElement("div");av.className="message-avatar";av.textContent=role==="user"?(user?.displayName?.[0]?.toUpperCase()||"V"):"✳";const body=document.createElement("div");body.className="message-body";const label=document.createElement("div");label.className="message-role";label.textContent=role==="user"?(user?.displayName||"Você"):"Wiki AI";const content=document.createElement("div");content.className="message-text";if(!animate)content.textContent=text;body.append(label,content);const sources=Array.isArray(source)?source:(source?[source]:[]);for(const item of sources){if(!item?.url)continue;const a=document.createElement("a");a.className="source-link";a.href=item.url;a.target="_blank";a.rel="noopener noreferrer";a.textContent="↗ "+item.title;body.append(a)}row.append(av,body);messages.append(row);if(animate){let i=0;const step=()=>{if(!row.isConnected){if(typingTimer){clearTimeout(typingTimer);typingTimer=null}return}content.textContent+=text.slice(i,i+18);i+=18;scroll();if(i<text.length)typingTimer=setTimeout(step,12);else typingTimer=null};step()}scroll();return row}
 function renderHistory(){historyEl.replaceChildren();if(!chats.length){const p=document.createElement("p");p.className="history-empty";p.textContent="Suas conversas aparecerão aqui.";historyEl.append(p);return}chats.sort((a,b)=>b.time-a.time).forEach(c=>{const row=document.createElement("div");row.className="history-row"+(c.id===active?" active":"");const b=document.createElement("button");b.className="history-item";b.textContent="◷  "+c.title;b.title=c.title;b.onclick=()=>openChat(c.id);const d=document.createElement("button");d.className="delete-chat";d.textContent="×";d.title="Excluir";d.onclick=()=>{chats=chats.filter(x=>x.id!==c.id);save();renderHistory();if(active===c.id)newChat()};row.append(b,d);historyEl.append(row)})}
-function openChat(id){const c=chats.find(x=>x.id===id);if(!c)return;active=id;messages.replaceChildren();showChat();c.items.forEach(m=>render(m.role,m.text,m.source));renderHistory();sidebar.classList.remove("open")}
+function openChat(id){const c=chats.find(x=>x.id===id);if(!c)return;cancelPending();active=id;messages.replaceChildren();showChat();c.items.forEach(m=>render(m.role,m.text,m.source));renderHistory();sidebar.classList.remove("open")}
 function add(role,text,source){let c=chats.find(x=>x.id===active);if(!c){c={id:crypto.randomUUID?crypto.randomUUID():String(Date.now()),title:text.slice(0,42),items:[],time:Date.now()};chats.unshift(c);active=c.id}c.items.push({role,text,source});c.time=Date.now();if(role==="user"&&c.items.length===1)c.title=text.slice(0,42);chats=chats.slice(0,50);save();renderHistory()}
 function typing(){const row=render("assistant","");const t=row.querySelector(".message-text"),dots=document.createElement("div");dots.className="typing";for(let i=0;i<3;i++)dots.append(document.createElement("span"));t.append(dots);return row}
 function norm(s){return s.toLocaleLowerCase("pt-BR").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^\p{L}\p{N}\s]/gu," ").replace(/\s+/g," ").trim()}
 function smallTalk(raw){const q=norm(raw);if(/^(oi|ola|opa|eai|e ae|iae|hey|hello|bom dia|boa tarde|boa noite|salve|fala|tudo bem|como vai)(\s|$)/.test(q))return ["Oi! 😊 Como você está? Pode conversar comigo normalmente ou perguntar algo que esteja curioso para saber.","Olá! Que bom ter você por aqui. O que você gostaria de fazer hoje?","Opa! Tudo certo por aqui. Pode mandar sua pergunta ou só bater papo mesmo!"][Math.floor(Math.random()*3)];if(/^(obrigado|obrigada|valeu|brigado|brigada|thanks)(\s|$)/.test(q))return"Por nada! 😊 Se precisar de mais alguma coisa, é só falar.";if(/^(tchau|ate mais|falou|fui)$/.test(q))return"Até mais! 👋 Quando quiser conversar ou descobrir algo novo, estarei por aqui.";if(/^(quem e voce|qual seu nome|o que e voce|voce e uma ia|quem te criou)$/.test(q))return"Eu sou a Wiki AI, um chatbot experimental. Consigo conversar sobre mensagens simples e pesquisar artigos da Wikipédia. Ainda não tenho um modelo generativo completo conectado, então tenho algumas limitações.";if(/^(tudo bem|como voce esta|como vai voce)$/.test(q))return"Tudo bem por aqui! 😊 E com você?";if(/^(kkkk+|haha+|rsrs+|lol)$/.test(q))return"😂 Hahaha! Conta aí!";if(/^(sim|nao|talvez|entendi|ata|ah|ok|okay|beleza|legal|massa|show)$/.test(q))return"Entendi! 🙂 Quer me contar mais ou tem outra coisa em mente?";if(/^(me ajuda|pode me ajudar|preciso de ajuda)$/.test(q))return"Claro! Me conta com o que você precisa de ajuda e vamos por partes.";if(/^(me conte uma curiosidade|curiosidade interessante)$/.test(q))return"Uma curiosidade: polvos têm três corações, e parte do sangue deles é azul por causa de uma proteína que transporta oxigênio.";return null}
 function extractTopic(raw){let q=norm(raw);q=q.replace(/^(por favor\s+)?(me diga|me explica|me explique|explique|defina|pesquise|pesquisa|procure|busque|me fale sobre|me conta sobre|fale sobre|conta sobre|o que e|oque e|o que eh|oque eh|quem e|quem foi|quem sao|como funciona|como e|qual e|quais sao|onde fica|quando foi|significado de|historia de|para que serve|me fale|me conte)\s+/,"");q=q.replace(/^(um|uma|o|a|os|as)\s+/,"");const stop=new Set(["um","uma","o","a","os","as","de","do","da","dos","das","e","em","no","na","nos","nas","por","para","com","que","qual","quais","foi","sao","ser","sobre","como","quando","onde","porque","pq","me","se","tem","mais","parte","util","wikipedia","artigo"]);return q.split(" ").filter(w=>w&&!stop.has(w)).join(" ").trim()||q}
 function shouldSearch(raw){const q=norm(raw);return /^(o que|oque|quem|como|por que|porque|qual|quais|onde|quando|me fale|me conta|fale sobre|conta sobre|explique|defina|pesquise|pesquisa|procure|busque|significado de|para que serve|historia de|me explique|me diga)\b/.test(q)||/\b(wikipedia|artigo sobre|pesquise sobre|pesquisa sobre|me fale sobre|me conta sobre)\b/.test(q)}
-async function wiki(query){
+async function wiki(query,signal){
  const base="https://pt.wikipedia.org/w/api.php";
  const clean=norm(query);
  if(!clean)return null;
  const words=clean.split(" ").filter(w=>w.length>2);
  const searchParams=new URLSearchParams({action:"query",list:"search",srsearch:query,srlimit:"10",format:"json",origin:"*",utf8:"1"});
- const res=await fetch(base+"?"+searchParams);
+ const res=await fetch(base+"?"+searchParams,{signal});
  if(!res.ok)throw Error("A Wikipédia não respondeu agora.");
  const data=await res.json();
  const hits=data?.query?.search||[];
@@ -32,16 +33,16 @@ async function wiki(query){
   const matched=words.filter(word=>titleWords.has(word)).length;
   const score=words.length?matched/words.length:0;
   return {...hit,score};
- }).filter(hit=>hit.score>=0.5).sort((a,b)=>b.score-a.score);
+ }).filter(hit=>hit.score>=(words.length<=2?1:0.6)).sort((a,b)=>b.score-a.score);
  if(!ranked.length)return null;
  for(const hit of ranked.slice(0,3)){
   const params=new URLSearchParams({action:"query",prop:"extracts",explaintext:"1",redirects:"1",titles:hit.title,format:"json",origin:"*",utf8:"1"});
-  const response=await fetch(base+"?"+params);
+  const response=await fetch(base+"?"+params,{signal});
   if(!response.ok)continue;
   const payload=await response.json();
   const page=Object.values(payload?.query?.pages||{})[0];
   const articleText=String(page?.extract||"").replace(/\\n{3,}/g,"\\n\\n").trim();
-  if(articleText)return{title:page?.title||hit.title,text:articleText,url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};
+  if(articleText)return{title:page?.title||hit.title,text:articleText.slice(0,4500)+(articleText.length>4500?"\\n\\n[Texto resumido para evitar uma resposta excessivamente longa.]":""),url:"https://pt.wikipedia.org/wiki/"+encodeURIComponent((page?.title||hit.title).replace(/ /g,"_"))};
  }
  return null;
 }
@@ -62,19 +63,19 @@ async function googleSearch(query){
  }
  return results;
 }
-async function answer(raw){
+async function answer(raw,signal){
  const local=smallTalk(raw);if(local)return{text:local};
  const topic=shouldSearch(raw)?extractTopic(raw):raw.trim();
  const google={title:"Pesquisar no Google",url:"https://www.google.com/search?q="+encodeURIComponent(raw.trim())};
  try{
-  const a=await wiki(topic||raw.trim());
+  const a=await wiki(topic||raw.trim(),signal);
   if(a)return{text:(a.random?"Não encontrei um artigo exato para sua pergunta, então aqui vai um artigo aleatório da Wikipédia em português.\n\n":"") + a.text,source:[{title:"Abrir artigo: "+a.title,url:a.url},google]};
   return{text:"Não encontrei um artigo para essa pergunta e não consegui carregar um artigo aleatório. Tente pesquisar no Google.",source:google};
  }catch(e){
   return{text:"Não consegui acessar a Wikipédia agora. Você pode tentar novamente ou pesquisar no Google.",source:google};
  }
 }
-async function sendMessage(raw){const text=raw.trim();if(!text||busy)return;busy=true;send.disabled=true;showChat();render("user",text);add("user",text);input.value="";resize();const load=typing();try{const a=await answer(text);load.remove();add("assistant",a.text,a.source);render("assistant",a.text,a.source,true)}catch(e){load.remove();render("assistant","Ops, algo deu errado. Tente novamente.");toast(e.message||"Erro inesperado.",true)}finally{busy=false;send.disabled=false;input.focus()}}
+async function sendMessage(raw){const text=raw.trim();if(!text||busy)return;busy=true;send.disabled=true;const id=++requestId;requestController=new AbortController();const signal=requestController.signal;showChat();render("user",text);add("user",text);input.value="";resize();const load=typing();try{const a=await answer(text,signal);if(id!==requestId||signal.aborted)return;load.remove();add("assistant",a.text,a.source);render("assistant",a.text,a.source,true)}catch(e){if(id!==requestId||signal.aborted)return;load.remove();render("assistant","Ops, algo deu errado. Tente novamente.");toast(e.message||"Erro inesperado.",true)}finally{if(id===requestId){requestController=null;busy=false;send.disabled=false;input.focus()}}}
 function theme(t){document.body.classList.toggle("light-mode",t==="light");$("#themeButton").textContent=t==="light"?"☾":"☼";try{localStorage.setItem(THEME,t)}catch{}}
 function showAuth(){$("#authModal").hidden=false;$("#logoutButton").hidden=!user;$("#googleButton").hidden=!!user;$("#guestButton").hidden=!!user;$("#authTitle").textContent=user?"Conta conectada":"Entre na Wiki AI"}
 function updateUser(u){user=u||null;$("#userName").textContent=u?.displayName||"Visitante";$("#userEmail").textContent=u?.email||"Histórico neste dispositivo";$("#loginButton").textContent=u?"Minha conta":"Entrar";const av=$("#userAvatar");av.replaceChildren();if(u?.photoURL){const img=document.createElement("img");img.src=u.photoURL;img.alt="";av.append(img)}else av.textContent=u?.displayName?.[0]?.toUpperCase()||"W";$("#logoutButton").hidden=!u;$("#googleButton").hidden=!!u;$("#guestButton").hidden=!!u;$("#authNote").textContent=u?(u.email||"Você entrou com Google."):"Configure o Firebase no script.js para ativar o login."}
