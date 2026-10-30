@@ -228,9 +228,10 @@ function localAnswer(raw){
  if(/^(voce gosta de mim|voce e legal|voce e boa)$/.test(q))return "Que bom que está gostando da Wiki AI! 😊 Ainda estou em desenvolvimento, mas posso ajudar com cálculos e pesquisas.";
  return null;
 }
-async function answer(raw,signal){
+async function answer(raw,signal,image=null){
  const mode=getSearchMode();
- if(mode==="gemini")return await answerGemini(raw,signal);
+ if(image&&mode!=="gemini")throw new Error(getLanguage()==="en"?"Image analysis is available in Gemini mode. Open Settings → Answers and select Gemini.":"A análise de imagens está disponível no modo Gemini. Abra Configurações → Respostas e selecione Gemini.");
+ if(mode==="gemini")return await answerGemini(raw,signal,image);
  if(mode==="custom"){
   const custom=findCustomAnswer(raw);if(custom)return{text:custom};
   const local=localAnswer(raw);if(local)return{text:local};
