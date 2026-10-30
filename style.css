@@ -133,3 +133,7 @@ body.beige-mode .settings-theme-card.selected{background:#e9dfcd;border-color:#b
 
 article.settings-option:has(#geminiSettings){align-items:stretch;flex-direction:column}
 #geminiSettings{box-sizing:border-box}
+
+
+/* Anexar e pré-visualizar imagens para análise no Gemini */
+.attach-image-button{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:11px;cursor:pointer}.attach-image-button:hover{border-color:var(--brand-accent);background:var(--surface-2)}.image-preview{display:flex;align-items:center;gap:10px;margin:9px 12px 0;padding:8px 10px;border:1px solid var(--line);border-radius:11px;background:var(--surface);min-width:0}.image-preview[hidden]{display:none!important}.image-preview img{width:48px;height:48px;object-fit:cover;border-radius:7px;background:var(--surface-2)}.image-preview span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:11px}.image-preview button{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--text);font-size:19px;cursor:pointer}.message.user .wiki-result-image{max-width:min(100%,360px);max-height:300px}.composer-top-tools{flex-wrap:wrap}@media(max-width:650px){.attach-image-button{padding:6px 8px}.image-preview{margin-left:9px;margin-right:9px}}
