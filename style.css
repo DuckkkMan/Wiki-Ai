@@ -130,3 +130,6 @@ body.beige-mode .settings-theme-card.selected{background:#e9dfcd;border-color:#b
 .gemini-key-actions span{font-size:10px;color:var(--muted)}
 .gemini-settings>small{font-size:10px;line-height:1.5;color:var(--muted)}
 @media(max-width:650px){.gemini-key-actions{align-items:flex-start}.gemini-key-actions span{width:100%}}
+
+article.settings-option:has(#geminiSettings){align-items:stretch;flex-direction:column}
+#geminiSettings{box-sizing:border-box}
