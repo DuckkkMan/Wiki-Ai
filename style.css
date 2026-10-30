@@ -137,3 +137,35 @@ article.settings-option:has(#geminiSettings){align-items:stretch;flex-direction:
 
 /* Anexar e pré-visualizar imagens para análise no Gemini */
 .attach-image-button{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:11px;cursor:pointer}.attach-image-button:hover{border-color:var(--brand-accent);background:var(--surface-2)}.image-preview{display:flex;align-items:center;gap:10px;margin:9px 12px 0;padding:8px 10px;border:1px solid var(--line);border-radius:11px;background:var(--surface);min-width:0}.image-preview[hidden]{display:none!important}.image-preview img{width:48px;height:48px;object-fit:cover;border-radius:7px;background:var(--surface-2)}.image-preview span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:11px}.image-preview button{width:28px;height:28px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--text);font-size:19px;cursor:pointer}.message.user .wiki-result-image{max-width:min(100%,360px);max-height:300px}.composer-top-tools{flex-wrap:wrap}@media(max-width:650px){.attach-image-button{padding:6px 8px}.image-preview{margin-left:9px;margin-right:9px}}
+
+/* Wiki AI Plus: syntax-highlighted code blocks */
+.code-block{overflow:hidden;margin:16px 0;border:1px solid var(--line);border-radius:13px;background:#11151c;color:#e7edf5;box-shadow:0 8px 24px #00000012}
+.code-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 12px;border-bottom:1px solid #ffffff18;background:#ffffff08;color:#aab5c5;font:600 10px/1.2 ui-monospace,SFMono-Regular,Consolas,monospace;text-transform:uppercase;letter-spacing:.7px}
+.code-copy{padding:6px 10px;border:1px solid #ffffff26;border-radius:7px;background:#ffffff0b;color:#e7edf5;font:600 10px/1.2 inherit;cursor:pointer}
+.code-copy:hover{background:#ffffff1c}
+.code-block pre{margin:0;padding:15px 16px;overflow:auto;tab-size:4;font:12px/1.75 ui-monospace,SFMono-Regular,Consolas,"Liberation Mono",monospace;white-space:pre}
+.code-block code{font:inherit;color:#dce6f3}
+.code-comment{color:#82909f;font-style:italic}.code-string{color:#a8d68e}.code-number{color:#d7a6f7}.code-keyword{color:#d79bf5;font-weight:650}.code-function{color:#83c8f5}.code-tag{color:#f29bba}.code-attr{color:#e6c17a}.code-operator{color:#9db4d0}
+.message-text .code-block{white-space:normal}
+body.light-mode .code-block,body.beige-mode .code-block,body.unique-mode .code-block{background:#151b24;color:#e7edf5}
+body.beige-mode .code-block{border-color:#cfc1aa}
+body.unique-mode .code-block{border-color:var(--brand-accent)}
+/* Custom palette picker */
+.custom-color-option{align-items:stretch;flex-direction:column}
+.custom-color-picker{width:min(100%,520px);display:flex;flex-direction:column;gap:10px}
+#colorPlane{display:block;width:100%;height:150px;border:1px solid var(--line);border-radius:10px;cursor:crosshair;touch-action:manipulation}
+#colorPlane:focus-visible{outline:2px solid var(--brand-accent);outline-offset:3px}
+.hue-row,.color-picker-footer{display:flex;align-items:center;gap:12px}
+.hue-row label,.color-picker-footer label{min-width:105px;color:var(--muted);font-size:10px}
+#hueSetting{flex:1;min-width:0;accent-color:var(--brand-accent)}
+#accentPreview{width:28px;height:28px;flex-shrink:0;border:2px solid var(--line);border-radius:9px;background:var(--brand-accent)}
+.color-picker-footer{padding-top:4px}
+.color-picker-footer code{color:var(--muted);font-size:10px}
+.unique-mock{background:linear-gradient(135deg,#21152f,#38275e)}
+.unique-mock i{background:#8064b8}.unique-mock i:first-child{background:#b18be9}
+body.unique-mode{color-scheme:dark;background:var(--bg);color:var(--text)}
+body.unique-mode .sidebar,body.unique-mode .topbar,body.unique-mode .composer,body.unique-mode .settings-panel,body.unique-mode .auth-modal{background:var(--sidebar);border-color:var(--line)}
+body.unique-mode .message.user .message-body{background:var(--user)}
+body.unique-mode .settings-theme-card.selected{border-color:var(--brand-accent);background:var(--surface)}
+body.unique-mode .composer:focus-within{border-color:var(--brand-accent)}
+@media(max-width:650px){.custom-color-picker{width:100%}.hue-row label,.color-picker-footer label{min-width:85px}}
