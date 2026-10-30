@@ -39,8 +39,19 @@ function smallTalk(raw){
  if(/^(e voce|e vc|e contigo)$/.test(q))return "Estou por aqui, pronto para ajudar! 😄";
  return null;
 }
-function extractTopic(raw){let q=norm(raw);if(getLanguage()==="en")q=q.replace(/^(please\\s+)?(tell me about|what is|what are|who is|who was|who are|how does|how do|explain|define|search for|look up)\\s+/,"");else q=q.replace(/^(por favor\\s+)?q=q.replace(/^(por favor\s+)?(me diga|me explica|me explique|explique|defina|pesquise|pesquisa|procure|busque|me fale sobre|me conta sobre|fale sobre|conta sobre|o que e|oque e|o que eh|oque eh|quem e|quem foi|quem sao|como funciona|como e|qual e|quais sao|onde fica|quando foi|significado de|historia de|para que serve|me fale|me conte)\s+/,"");q=q.replace(/^(um|uma|o|a|os|as)\s+/,"");const stop=new Set(["um","uma","o","a","os","as","de","do","da","dos","das","e","em","no","na","nos","nas","por","para","com","que","qual","quais","foi","sao","ser","sobre","como","quando","onde","porque","pq","me","se","tem","mais","parte","util","wikipedia","artigo"]);return q.split(" ").filter(w=>w&&!stop.has(w)).join(" ").trim()||q}
-function shouldSearch(raw){const q=norm(raw);return /^(o que|oque|quem|como|por que|porque|qual|quais|onde|quando|me fale|me conta|fale sobre|conta sobre|explique|defina|pesquise|pesquisa|procure|busque|significado de|para que serve|historia de|me explique|me diga)\b/.test(q)||/\b(wikipedia|artigo sobre|pesquise sobre|pesquisa sobre|me fale sobre|me conta sobre)\b/.test(q)}
+function extractTopic(raw){
+ let q=norm(raw);
+ if(getLanguage()==="en")q=q.replace(/^(please\s+)?(tell me about|what is|what are|who is|who was|who are|how does|how do|explain|define|search for|look up)\s+/,"");
+ else q=q.replace(/^(por favor\s+)?(me diga|me explica|me explique|explique|defina|pesquise|pesquisa|procure|busque|me fale sobre|me conta sobre|fale sobre|conta sobre|o que e|oque e|o que eh|oque eh|quem e|quem foi|quem sao|como funciona|como e|qual e|quais sao|onde fica|quando foi|significado de|historia de|para que serve|me fale|me conte)\s+/,"");
+ q=q.replace(/^(a|an|the|um|uma|o|a|os|as)\s+/,"");
+ const stop=new Set(["a","an","the","of","in","on","for","about","is","are","was","were","what","who","how","when","where","why","please","tell","me","um","uma","o","os","as","de","do","da","dos","das","e","em","no","na","nos","nas","por","para","com","que","qual","quais","foi","sao","ser","sobre","como","quando","onde","porque","pq","se","tem","mais","parte","util","wikipedia","artigo"]);
+ return q.split(" ").filter(w=>w&&!stop.has(w)).join(" ").trim()||q;
+}
+function shouldSearch(raw){
+ const q=norm(raw);
+ if(getLanguage()==="en")return /^(what is|what are|who is|who was|who are|how does|how do|why|which|where|when|tell me about|explain|define|search for|look up)\b/.test(q)||/\b(wikipedia|article about)\b/.test(q);
+ return /^(o que|oque|quem|como|por que|porque|qual|quais|onde|quando|me fale|me conta|fale sobre|conta sobre|explique|defina|pesquise|pesquisa|procure|busque|significado de|para que serve|historia de|me explique|me diga)\b/.test(q)||/\b(wikipedia|artigo sobre|pesquise sobre|pesquisa sobre|me fale sobre|me conta sobre)\b/.test(q);
+}
 async function wiki(query,signal){
  const language=getLanguage(),base=language==="en"?"https://en.wikipedia.org/w/api.php":"https://pt.wikipedia.org/w/api.php";
  const clean=norm(query);
@@ -135,9 +146,9 @@ function formatNumber(value){if(!Number.isFinite(value))return null;return new I
 function calculate(raw){
  let q=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().replace(/[?!]+$/,"");
  q=q.replace(/^(quanto e|quanto da|calcule|calcular|resolva|resolve|resultado de|qual o resultado de|faca|faz)\s+/,"").replace(/\s+(por favor|pra mim)$/,"").trim();
- q=q.replace(/\bmais\b/g,"+").replace(/\bmenos\b/g,"-").replace(/\bvezes\b/g,"*").replace(/\b(?:dividido por|dividido|dividir por)\b/g,"/").replace(/\bx\b/g,"*").replace(/,/g,".");
- const percent=q.match(/^(\d+(?:\.\d+)?)\s*%\s*(?:de|do|da)\s*(\d+(?:\.\d+)?)$/);
- if(percent)return "Vamos calcular!\n\n"+percent[1]+"% "+(getLanguage()==="en"?"of ":"de ")+percent[2]+" = "+formatNumber(Number(percent[1])*Number(percent[2])/100);
+ q=q.replace(/\bmais\b/g,"+").replace(/\bmenos\b/g,"-").replace(/\bvezes\b/g,"*").replace(/\b(?:dividido por|dividido|dividir por)\b/g,"/").replace(/\bplus\b/g,"+").replace(/\bminus\b/g,"-").replace(/\btimes\b/g,"*").replace(/\bdivided by\b/g,"/").replace(/\bx\b/g,"*").replace(/,/g,".");
+ const percent=q.match(/^(\d+(?:\.\d+)?)\s*%\s*(?:de|do|da|of)\s*(\d+(?:\.\d+)?)$/);
+ if(percent)return (getLanguage()==="en"?"Let’s calculate!\n\n":"Vamos calcular!\n\n")+percent[1]+"% "+(getLanguage()==="en"?"of ":"de ")+percent[2]+" = "+formatNumber(Number(percent[1])*Number(percent[2])/100);
  if(!q||!/^[\d\s()+\-*/^%.]+$/.test(q)||!/[+*/^%]|\d\s*-\s*\d/.test(q))return null;
  const tokens=q.match(/\d+(?:\.\d+)?|[()+\-*/^%]/g);if(!tokens||tokens.join("")!==q.replace(/\s/g,""))return null;
  let pos=0;const peek=()=>tokens[pos],take=()=>tokens[pos++];
@@ -145,7 +156,7 @@ function calculate(raw){
  function power(){let v=primary();if(peek()==="^"){take();v=Math.pow(v,power())}if(peek()==="%"){take();v/=100}return v}
  function term(){let v=power();while(peek()==="*"||peek()==="/"){const op=take(),n=power();v=op==="*"?v*n:v/n}return v}
  function expression(){let v=term();while(peek()==="+"||peek()==="-"){const op=take(),n=term();v=op==="+"?v+n:v-n}return v}
- try{const value=expression();if(pos!==tokens.length||!Number.isFinite(value))return "Essa conta não tem um resultado válido (talvez haja divisão por zero).";return "Vamos calcular!\n\n"+q.replace(/\*/g," × ").replace(/\//g," ÷ ").replace(/\^/g," ^ ")+" = "+formatNumber(value)}catch{return null}
+ try{const value=expression();if(pos!==tokens.length||!Number.isFinite(value))return getLanguage()==="en"?"This calculation has no valid result (there may be division by zero).":"Essa conta não tem um resultado válido (talvez haja divisão por zero).";return (getLanguage()==="en"?"Let’s calculate!\n\n":"Vamos calcular!\n\n")+q.replace(/\*/g," × ").replace(/\//g," ÷ ").replace(/\^/g," ^ ")+" = "+formatNumber(value)}catch{return null}
 }
 function localAnswer(raw){
  const q=norm(raw);
