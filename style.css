@@ -169,3 +169,5 @@ body.unique-mode .message.user .message-body{background:var(--user)}
 body.unique-mode .settings-theme-card.selected{border-color:var(--brand-accent);background:var(--surface)}
 body.unique-mode .composer:focus-within{border-color:var(--brand-accent)}
 @media(max-width:650px){.custom-color-picker{width:100%}.hue-row label,.color-picker-footer label{min-width:85px}}
+
+body.unique-mode{--bg:color-mix(in srgb,var(--brand-accent) 15%,#101014);--sidebar:color-mix(in srgb,var(--brand-accent) 19%,#09090d);--surface:color-mix(in srgb,var(--brand-accent) 17%,#202027);--surface-2:color-mix(in srgb,var(--brand-accent) 24%,#292930);--hover:color-mix(in srgb,var(--brand-accent) 20%,#292930);--text:#f4f0fa;--muted:#b7afc4;--line:color-mix(in srgb,var(--brand-accent) 24%,#45414d);--user:color-mix(in srgb,var(--brand-accent) 22%,#25212d);color-scheme:dark;background:var(--bg);color:var(--text)}
