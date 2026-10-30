@@ -47,3 +47,8 @@ body.light-mode .settings-panel{border-color:#ddd}body.light-mode .settings-them
 .search-mode{max-width:150px;padding:7px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--text);font:inherit;font-size:11px;outline:none}
 .search-mode:focus{border-color:#888}
 @media(max-width:700px){.composer-tools{gap:6px}.search-mode{max-width:125px;padding:6px 7px;font-size:10px}.composer-note{font-size:8px}}
+
+/* Modo de pesquisa nas configurações */
+#searchMode.settings-select{min-width:190px;max-width:230px;cursor:pointer}
+.fixed-limit-value{flex-shrink:0;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);font-size:11px;font-weight:700}
+@media(max-width:650px){#searchMode.settings-select{width:100%;max-width:none}.fixed-limit-value{align-self:flex-end}}
