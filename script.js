@@ -21,7 +21,7 @@ function getWordLimit(){const c=localStorage.getItem(LIMIT_KEY)||"1000";if(c==="
  const lang=(language||"").toLowerCase();
  const keys={lua:"and break do else elseif end false for function if in local nil not or repeat return then true until while",javascript:"async await break case catch class const continue default delete do else export extends false finally for function if import in instanceof let new null of return static super switch this throw true try typeof undefined var void while",python:"and as assert async await break class continue def del elif else except False finally for from global if import in is lambda None nonlocal not or pass raise return True try while with yield",json:"true false null"};
  const known=new Set((keys[lang]||keys.javascript).split(" "));
- const re=/(--[^\n]*|\/\/[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*(?=\s*\()|\b[A-Za-z_$][\w$]*\b|[{}()[\].,;:+\-*/%=<>!&|^~?])/g;
+ const re=/(--[^\n]*|\/\/[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*(?=\s*\()|\b[A-Za-z_$][\w$]*\b|[{}()[\].,;:+\-*\/%=<>!&|^~?])/g;
  let pos=0,m;
  while((m=re.exec(source))){if(m.index>pos)target.append(document.createTextNode(source.slice(pos,m.index)));const t=m[0];let cls="";
  if(t.startsWith("--")||t.startsWith("//")||(t.startsWith("#")&&lang==="python"))cls="code-comment";
@@ -29,7 +29,7 @@ function getWordLimit(){const c=localStorage.getItem(LIMIT_KEY)||"1000";if(c==="
  else if(/^\d/.test(t))cls="code-number";
  else if(known.has(t))cls="code-keyword";
  else if(/^[A-Za-z_$][\w$]*$/.test(t)&&source.slice(re.lastIndex).match(/^\s*\(/))cls="code-function";
- else if(/^[{}()[\].,;:+\-*/%=<>!&|^~?]$/.test(t))cls="code-operator";
+ else if(/^[{}()[\].,;:+\-*\/%=<>!&|^~?]$/.test(t))cls="code-operator";
  if(cls){const span=document.createElement("span");span.className=cls;span.textContent=t;target.append(span)}else target.append(document.createTextNode(t));pos=re.lastIndex}
  if(pos<source.length)target.append(document.createTextNode(source.slice(pos)));
 }
