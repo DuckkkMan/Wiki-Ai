@@ -18,9 +18,12 @@ Chatbot estático em HTML, CSS e JavaScript, com interface inspirada em chats mo
 A configuração web do Firebase é feita para uso no cliente, mas restrinja a chave por domínio. Nunca publique credenciais privadas ou chaves de conta de serviço.
 
 ## Recursos e limitações
-- Chat responsivo, tema claro/escuro e histórico salvo neste navegador.
-- Respostas locais para saudações e mensagens simples.
-- Pesquisa na Wikipédia em português com link da fonte.
+- Chat responsivo, tema claro/escuro, cor de destaque personalizável e histórico salvo neste navegador.
+- Interface em português ou inglês, com preferência salva neste dispositivo.
+- Pesquisa na Wikipédia em português ou inglês conforme o idioma selecionado, com link para o artigo original.
+- Respostas locais para saudações, mensagens simples e cálculos básicos.
+- Modos Wikipédia, conversa local e perguntas/respostas personalizadas.
 - Login Google opcional com Firebase Authentication.
 - Esta versão ainda não usa um modelo generativo completo como o ChatGPT; para isso, é necessário conectar um serviço de IA por um backend seguro.
-- O histórico fica neste navegador. Sincronização entre dispositivos requer banco de dados e regras de acesso.
+- O histórico e as preferências ficam neste navegador. Sincronização entre dispositivos requer banco de dados e regras de acesso.
+- A cor de destaque e o idioma são aplicados localmente e podem ser alterados em **Configurações → Aparência**.
