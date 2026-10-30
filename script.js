@@ -6,7 +6,7 @@ const KEY="wiki-ai-chats-v3",OWNER_KEY="wiki-ai-chats-owner-v1",GUEST_KEY="wiki-
 function setBusy(value){busy=value;send.textContent=value?"■":"↑";send.setAttribute("aria-label",value?"Parar resposta":"Enviar");send.title=value?"Parar resposta":"Enviar"}function stopResponse(){if(!busy)return;requestId++;if(requestController){requestController.abort();requestController=null}if(typingTimer){clearTimeout(typingTimer);typingTimer=null}if(activeLoadingRow){activeLoadingRow.remove();activeLoadingRow=null}if(activeResponseItem){const chat=chats.find(c=>c.id===active);if(chat){chat.items=chat.items.filter(item=>item!==activeResponseItem);const partial=activeResponseRow?.querySelector(".message-text")?.textContent||"";if(partial.trim())chat.items.push({role:"assistant",text:partial,source:null});save()}activeResponseItem=null;activeResponseRow=null}setBusy(false);input.focus()}function cancelPending(){requestId++;if(requestController){requestController.abort();requestController=null}if(typingTimer){clearTimeout(typingTimer);typingTimer=null}if(activeLoadingRow){activeLoadingRow.remove();activeLoadingRow=null}setBusy(false)}
 function read(k,f){try{return JSON.parse(localStorage.getItem(k))??f}catch{return f}}
 function writeLocal(){try{localStorage.setItem(KEY,JSON.stringify(chats));if(user?.uid){localStorage.setItem("wiki-ai-chats-user-"+user.uid,JSON.stringify(chats));localStorage.setItem(OWNER_KEY,user.uid)}else{localStorage.removeItem(OWNER_KEY)}}catch{toast("Não foi possível salvar o histórico.",true)}}
-function queueCloud(task){if(!db||!cloudReady||!cloudUid)return;const uid=cloudUid;cloudQueue=cloudQueue.then(async()=>{if(!db||!cloudReady||cloudUid!==uid)return;await task(db.collection("users").doc(uid).collection("chats"))}).catch(error=>{console.error("Firestore:",error);toast("Não foi possível sincronizar o histórico com a nuvem.",true)})}
+function queueCloud(task){if(!db||!cloudReady||!cloudUid)return;const uid=cloudUid;cloudQueue=cloudQueue.then(async()=>{if(!db||!cloudReady||cloudUid!==uid)return;await task(db.collection("users").doc(uid).collection("chats"))}).catch(error=>{console.warn("Sincronização em nuvem indisponível; o histórico local continua salvo.",error)})}
 function syncCloudChats(){if(!db||!cloudReady||!cloudUid)return;const snapshot=chats.map(chat=>({...chat}));queueCloud(async collection=>{for(const chat of snapshot){if(cloudUid!==user?.uid)return;await collection.doc(String(chat.id)).set({id:String(chat.id),title:String(chat.title||"Conversa"),items:Array.isArray(chat.items)?chat.items:[],time:Number(chat.time)||Date.now()})}})}
 function deleteCloudChat(id){queueCloud(collection=>collection.doc(String(id)).delete())}
 function clearCloudChats(){queueCloud(async collection=>{const docs=await collection.get();let batch=db.batch();let count=0;for(const doc of docs.docs){batch.delete(doc.ref);count++;if(count===450){await batch.commit();batch=db.batch();count=0}}if(count)await batch.commit()})}
@@ -75,28 +75,19 @@ async function wiki(query,signal){
  }
  return null;
 }
-async function googleSearch(query,signal){
- const url="https://r.jina.ai/http://www.google.com/search?hl=pt-BR&gl=br&q="+encodeURIComponent(query);
- const res=await fetch(url,{signal,headers:{"Accept":"text/plain"}});
- if(!res.ok)throw Error("A pesquisa do Google não respondeu agora.");
- const page=await res.text();
- const lines=page.split("\n").map(x=>x.trim()).filter(Boolean);
- const results=[];
- for(let i=0;i<lines.length&&results.length<5;i++){
-  const m=lines[i].match(/\[([^\]]{3,180})\]\((https?:\/\/[^)]+)\)/);
-  if(!m||/google\.com\/search|support\.google|accounts\.google|policies\.google/i.test(m[2]))continue;
-  const resultUrl=m[2].replace(/&amp;/g,"&");
-  let snippet="";
-  for(let j=i+1;j<Math.min(i+5,lines.length);j++){
-   const line=lines[j].replace(/\*\*/g,"").trim();
-   if(line&&!line.startsWith("[")&&!line.startsWith("http")&&line.length>35){snippet=line.slice(0,500);break;}
-  }
-  if(!results.some(x=>x.url===resultUrl))results.push({title:m[1],url:resultUrl,snippet});
- }
- return results;
-}
 const SEARCH_MODE_KEY="wiki-ai-search-mode-v1";
-function getSearchMode(){const mode=localStorage.getItem(SEARCH_MODE_KEY);return ["auto","wiki","google","local"].includes(mode)?mode:"auto"}
+function getSearchMode(){const mode=localStorage.getItem(SEARCH_MODE_KEY);return ["wiki","local","custom"].includes(mode)?mode:"wiki"}
+
+const CUSTOM_QA_KEY="wiki-ai-custom-qa-v1";
+function getCustomQA(){const list=read(CUSTOM_QA_KEY,[]);return Array.isArray(list)?list.filter(x=>x&&typeof x.question==="string"&&typeof x.answer==="string"):[]}
+function renderCustomQA(){
+ const list=$("#customQAList");if(!list)return;list.replaceChildren();
+ const entries=getCustomQA();
+ if(!entries.length){const empty=document.createElement("p");empty.className="custom-qa-empty";empty.textContent="Nenhuma pergunta personalizada cadastrada.";list.append(empty);return}
+ entries.forEach((entry,index)=>{const row=document.createElement("article");row.className="custom-qa-item";const copy=document.createElement("div");copy.className="custom-qa-copy";const question=document.createElement("strong");question.textContent=entry.question;const answer=document.createElement("p");answer.textContent=entry.answer;copy.append(question,answer);const remove=document.createElement("button");remove.className="settings-action danger";remove.type="button";remove.textContent="Excluir";remove.onclick=()=>{const next=getCustomQA();next.splice(index,1);localStorage.setItem(CUSTOM_QA_KEY,JSON.stringify(next));renderCustomQA();toast("Pergunta personalizada excluída.")};row.append(copy,remove);list.append(row)})
+}
+function findCustomAnswer(raw){const query=norm(raw);if(!query)return null;const entries=getCustomQA();const match=entries.find(entry=>norm(entry.question)===query);return match?match.answer:null}
+
 function formatNumber(value){if(!Number.isFinite(value))return null;return new Intl.NumberFormat("pt-BR",{maximumFractionDigits:10}).format(Object.is(value,-0)?0:value)}
 function calculate(raw){
  let q=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().replace(/[?!]+$/,"");
@@ -118,29 +109,24 @@ function localAnswer(raw){
  const math=calculate(raw);if(math)return math;
  if(/^(que dia e hoje|qual a data de hoje|data de hoje)$/.test(q))return "Hoje é "+new Intl.DateTimeFormat("pt-BR",{dateStyle:"full"}).format(new Date())+".";
  if(/^(que horas sao|que horas e|horario atual)$/.test(q))return "Agora são "+new Intl.DateTimeFormat("pt-BR",{hour:"2-digit",minute:"2-digit"}).format(new Date())+".";
- if(/^(o que voce sabe fazer|o que voce pode fazer|como posso usar voce|ajuda|comandos)$/.test(q))return "Posso ajudar de algumas formas:\n\n• Resolver contas e expressões matemáticas.\n• Conversar e responder mensagens simples sem pesquisar.\n• Pesquisar artigos na Wikipédia.\n• Pesquisar resultados na web pelo Google.\n\nUse o seletor ao lado da caixa de mensagem para escolher o modo de pesquisa.";
- if(/^(qual e seu objetivo|para que voce serve)$/.test(q))return "Sou a Wiki AI! Meu objetivo é ajudar com cálculos, conversas simples e pesquisas na Wikipédia ou no Google. Escolha o modo que preferir no seletor de pesquisa.";
+ if(/^(o que voce sabe fazer|o que voce pode fazer|como posso usar voce|ajuda|comandos)$/.test(q))return "Posso conversar, resolver contas, pesquisar artigos na Wikipédia e responder perguntas personalizadas que você cadastrar no modo Customizado. Escolha o modo nas Configurações → Respostas.";
+ if(/^(qual e seu objetivo|para que voce serve)$/.test(q))return "Sou a Wiki AI! Posso conversar, fazer cálculos, pesquisar na Wikipédia e usar suas perguntas e respostas personalizadas.";
  if(/^(voce gosta de mim|voce e legal|voce e boa)$/.test(q))return "Que bom que está gostando da Wiki AI! 😊 Ainda estou em desenvolvimento, mas posso ajudar com cálculos e pesquisas.";
  return null;
 }
 async function answer(raw,signal){
- const mode=getSearchMode(),local=localAnswer(raw);if(local)return{text:local};
- const googleLink={title:"Abrir esta pesquisa no Google",url:"https://www.google.com/search?hl=pt-BR&gl=br&q="+encodeURIComponent(raw.trim())};
- const wikiLink={title:"Pesquisar na Wikipédia",url:"https://pt.wikipedia.org/w/index.php?search="+encodeURIComponent(raw.trim())};
- if(mode==="local")return{text:"Ainda não tenho uma resposta local para isso. Escolha Automático, Wikipédia ou Google nas configurações para pesquisar na internet."};
+ const mode=getSearchMode();
+ if(mode==="custom"){
+  const custom=findCustomAnswer(raw);if(custom)return{text:custom};
+  const local=localAnswer(raw);if(local)return{text:local};
+  return{text:"Ainda não tenho uma resposta para essa pergunta. Cadastre essa pergunta e a resposta desejada em Configurações → Respostas → Modo Customizado."};
+ }
+ const local=localAnswer(raw);if(local)return{text:local};
+ if(mode==="local")return{text:"Ainda não tenho uma resposta local para isso. Você pode cadastrar uma resposta no modo Customizado ou mudar para Wikipédia nas configurações."};
  const topic=shouldSearch(raw)?extractTopic(raw):raw.trim();
- if(mode==="wiki"||mode==="auto"){
-  try{const article=await wiki(topic||raw.trim(),signal);if(article)return{text:article.text,source:[{title:"Abrir artigo: "+article.title,url:article.url}]}}
-  catch(e){if(signal?.aborted)throw e}
-  if(mode==="wiki")return{text:"Não encontrei um artigo correspondente na Wikipédia. Você pode tentar outra expressão ou pesquisar no Google.",source:[wikiLink]};
- }
- if(mode==="google"||mode==="auto"){
-  let results=[];
-  try{results=await googleSearch(raw.trim(),signal)}catch(e){if(signal?.aborted)throw e}
-  if(results.length){const details=results.map((item,i)=>(i+1)+". "+item.title+(item.snippet?"\n"+item.snippet:"")).join("\n\n");return{text:"Encontrei estes resultados associados à sua pesquisa. Abra os links para consultar as páginas completas:",source:[...results,googleLink]}}
-  return{text:"A pesquisa do Google está pronta. Clique no link abaixo para abrir os resultados diretamente no Google.",source:googleLink};
- }
- return{text:"Não consegui encontrar uma resposta para isso."};
+ try{const article=await wiki(topic||raw.trim(),signal);if(article)return{text:article.text,source:[{title:"Abrir artigo: "+article.title,url:article.url}]}}
+ catch(e){if(signal?.aborted)throw e}
+ return{text:"Não encontrei um artigo correspondente na Wikipédia. Tente outra expressão ou verifique a escrita do tema.",source:[{title:"Pesquisar na Wikipédia",url:"https://pt.wikipedia.org/w/index.php?search="+encodeURIComponent(raw.trim())}]};
 }
 async function sendMessage(raw){const text=raw.trim();if(!text||busy)return;setBusy(true);const id=++requestId;requestController=new AbortController();const signal=requestController.signal;showChat();render("user",text);add("user",text);input.value="";resize();activeLoadingRow=typing();try{const a=await answer(text,signal);if(id!==requestId||signal.aborted)return;const responseText=limitResponse(a.text);activeLoadingRow?.remove();activeLoadingRow=null;activeResponseItem=add("assistant",responseText,a.source);activeResponseRow=render("assistant",responseText,a.source,true,()=>{if(id===requestId){activeResponseItem=null;activeResponseRow=null;requestController=null;setBusy(false);input.focus()}})}catch(e){if(id!==requestId||signal.aborted)return;activeLoadingRow?.remove();activeLoadingRow=null;render("assistant","Ocorreu um erro ao processar sua mensagem.",null,false,()=>{if(id===requestId){requestController=null;setBusy(false);input.focus()}});toast(e.message||"Erro inesperado.",true)}}
 function theme(t){document.body.classList.toggle("light-mode",t==="light");$("#themeButton").textContent=t==="light"?"☾":"☼";try{localStorage.setItem(THEME,t)}catch{}}
@@ -166,7 +152,7 @@ async function updateUser(u){
   chats=[...merged.values()].sort((a,b)=>(Number(b.time)||0)-(Number(a.time)||0)).slice(0,50);
   active=null;messages.replaceChildren();messages.style.display="none";welcome.hidden=false;
   cloudUid=u.uid;cloudReady=true;writeLocal();renderHistory();syncCloudChats();
- }catch(error){if(generation!==authGeneration)return;console.error("Falha ao carregar conversas:",error);toast("Não foi possível carregar o histórico da nuvem. Verifique a conexão.",true);chats=read("wiki-ai-chats-user-"+u.uid,[]);cloudUid=u.uid;cloudReady=true;writeLocal();renderHistory()}
+ }catch(error){if(generation!==authGeneration)return;console.error("Falha ao carregar conversas:",error);console.warn("Não foi possível carregar o histórico da nuvem; usando o histórico local.",error);chats=read("wiki-ai-chats-user-"+u.uid,[]);cloudUid=u.uid;cloudReady=true;writeLocal();renderHistory()}
 }
 function initAuth(){const configured=FIREBASE_CONFIG.apiKey!=="COLOQUE_SUA_FIREBASE_API_KEY"&&FIREBASE_CONFIG.projectId!=="COLOQUE_SEU_PROJETO"&&FIREBASE_CONFIG.appId!=="COLOQUE_SEU_FIREBASE_APP_ID";if(!configured){$("#googleButton").onclick=()=>toast("Login Google não configurado. Siga as instruções do README.",true);return}try{if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);auth=firebase.auth();db=firebase.firestore();auth.onAuthStateChanged(updateUser);$("#authNote").textContent="Login seguro gerenciado pelo Firebase.";$("#googleButton").onclick=async()=>{try{await auth.signInWithPopup(new firebase.auth.GoogleAuthProvider());$("#authModal").hidden=true;toast("Login com Google realizado!")}catch(e){toast(e.message||"Falha ao entrar com Google.",true)}}}catch(e){$("#authNote").textContent=e.message}}
 
@@ -174,10 +160,12 @@ const settingsOverlay=$("#settingsOverlay");
 function openSettings(){settingsOverlay.hidden=false;document.body.classList.add("settings-open");syncSettings();showSettingsSection("appearance")}
 function closeSettings(){settingsOverlay.hidden=true;document.body.classList.remove("settings-open")}
 function showSettingsSection(name){document.querySelectorAll("[data-view]").forEach(v=>v.classList.toggle("active",v.dataset.view===name));document.querySelectorAll("[data-section]").forEach(b=>b.classList.toggle("active",b.dataset.section===name))}
-function syncSettings(){const themeValue=read(THEME,"dark");document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("selected",b.dataset.themeChoice===themeValue));$("#textSizeSetting").value=read(TEXT_KEY,"14");setSettingsSwitch($("#enterToSend"),read(ENTER_KEY,"true")!=="false");setSettingsSwitch($("#animationsSetting"),read(ANIM_KEY,"true")!=="false")}
+function syncSettings(){const themeValue=read(THEME,"dark");document.querySelectorAll("[data-theme-choice]").forEach(b=>b.classList.toggle("selected",b.dataset.themeChoice===themeValue));$("#textSizeSetting").value=read(TEXT_KEY,"14");setSettingsSwitch($("#enterToSend"),read(ENTER_KEY,"true")!=="false");setSettingsSwitch($("#animationsSetting"),read(ANIM_KEY,"true")!=="false");renderCustomQA()}
 function setSettingsSwitch(el,value){el.classList.toggle("enabled",value);el.setAttribute("aria-checked",String(value))}
-$("#settingsButton").onclick=openSettings;$("#closeSettings").onclick=closeSettings;settingsOverlay.addEventListener("click",e=>{if(e.target===settingsOverlay)closeSettings()});document.querySelectorAll("[data-section]").forEach(b=>b.onclick=()=>showSettingsSection(b.dataset.section));document.querySelectorAll("[data-theme-choice]").forEach(b=>b.onclick=()=>{theme(b.dataset.themeChoice);syncSettings();toast("Tema atualizado.")});$("#textSizeSetting").onchange=e=>{localStorage.setItem(TEXT_KEY,e.target.value);toast("Tamanho do texto atualizado.")};$("#enterToSend").onclick=()=>{const value=$("#enterToSend").getAttribute("aria-checked")!=="true";setSettingsSwitch($("#enterToSend"),value);localStorage.setItem(ENTER_KEY,String(value));toast("Preferência de envio atualizada.")};$("#animationsSetting").onclick=()=>{const value=$("#animationsSetting").getAttribute("aria-checked")!=="true";setSettingsSwitch($("#animationsSetting"),value);localStorage.setItem(ANIM_KEY,String(value));toast("Animações atualizadas.")};$("#exportChats").onclick=()=>{if(!chats.length)return toast("Não há conversas para exportar.");const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),chats},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="wiki-ai-conversas.json";a.click();URL.revokeObjectURL(url);toast("Histórico exportado.")};$("#clearChats").onclick=()=>{if(!confirm("Apagar todas as conversas salvas neste dispositivo? Essa ação não pode ser desfeita."))return;chats=[];active=null;clearCloudChats();save();renderHistory();messages.replaceChildren();messages.style.display="none";welcome.hidden=false;toast("Histórico apagado.")};$("#resetSettings").onclick=()=>{if(!confirm("Restaurar as configurações padrão? Seu histórico não será apagado."))return;[THEME,LIMIT_KEY,TEXT_KEY,ENTER_KEY,ANIM_KEY,SEARCH_MODE_KEY].forEach(k=>localStorage.removeItem(k));theme("dark");searchModeSelect.value="auto";syncSettings();toast("Configurações restauradas.")};
+$("#settingsButton").onclick=openSettings;$("#closeSettings").onclick=closeSettings;settingsOverlay.addEventListener("click",e=>{if(e.target===settingsOverlay)closeSettings()});document.querySelectorAll("[data-section]").forEach(b=>b.onclick=()=>showSettingsSection(b.dataset.section));document.querySelectorAll("[data-theme-choice]").forEach(b=>b.onclick=()=>{theme(b.dataset.themeChoice);syncSettings();toast("Tema atualizado.")});$("#textSizeSetting").onchange=e=>{localStorage.setItem(TEXT_KEY,e.target.value);toast("Tamanho do texto atualizado.")};$("#enterToSend").onclick=()=>{const value=$("#enterToSend").getAttribute("aria-checked")!=="true";setSettingsSwitch($("#enterToSend"),value);localStorage.setItem(ENTER_KEY,String(value));toast("Preferência de envio atualizada.")};$("#animationsSetting").onclick=()=>{const value=$("#animationsSetting").getAttribute("aria-checked")!=="true";setSettingsSwitch($("#animationsSetting"),value);localStorage.setItem(ANIM_KEY,String(value));toast("Animações atualizadas.")};$("#exportChats").onclick=()=>{if(!chats.length)return toast("Não há conversas para exportar.");const blob=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),chats},null,2)],{type:"application/json"});const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;a.download="wiki-ai-conversas.json";a.click();URL.revokeObjectURL(url);toast("Histórico exportado.")};$("#clearChats").onclick=()=>{if(!confirm("Apagar todas as conversas salvas neste dispositivo? Essa ação não pode ser desfeita."))return;chats=[];active=null;clearCloudChats();save();renderHistory();messages.replaceChildren();messages.style.display="none";welcome.hidden=false;toast("Histórico apagado.")};$("#resetSettings").onclick=()=>{if(!confirm("Restaurar as configurações padrão? Seu histórico não será apagado."))return;[THEME,LIMIT_KEY,TEXT_KEY,ENTER_KEY,ANIM_KEY,SEARCH_MODE_KEY].forEach(k=>localStorage.removeItem(k));theme("dark");searchModeSelect.value="wiki";syncSettings();toast("Configurações restauradas.")};
 
-const searchModeSelect=$("#searchMode");searchModeSelect.value=getSearchMode();searchModeSelect.onchange=()=>{localStorage.setItem(SEARCH_MODE_KEY,searchModeSelect.value);toast("Modo de pesquisa: "+searchModeSelect.options[searchModeSelect.selectedIndex].text)};
+const searchModeSelect=$("#searchMode");searchModeSelect.value=getSearchMode();searchModeSelect.onchange=()=>{localStorage.setItem(SEARCH_MODE_KEY,searchModeSelect.value);toast("Modo selecionado: "+searchModeSelect.options[searchModeSelect.selectedIndex].text)};
+$("#saveCustomQA").onclick=()=>{const question=$("#customQuestion").value.trim(),answerText=$("#customAnswer").value.trim();if(!question||!answerText)return toast("Preencha a pergunta e a resposta.",true);const entries=getCustomQA();const existing=entries.findIndex(item=>norm(item.question)===norm(question));if(existing>=0)entries[existing]={question,answer:answerText};else entries.push({question,answer:answerText});localStorage.setItem(CUSTOM_QA_KEY,JSON.stringify(entries));$("#customQuestion").value="";$("#customAnswer").value="";renderCustomQA();toast(existing>=0?"Resposta personalizada atualizada.":"Pergunta e resposta cadastradas.")};
+
 form.onsubmit=e=>{e.preventDefault();if(busy)stopResponse();else sendMessage(input.value)};input.addEventListener("input",resize);input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey&&read(ENTER_KEY,"true")!=="false"){e.preventDefault();form.requestSubmit()}});document.querySelectorAll("[data-prompt]").forEach(b=>b.onclick=()=>sendMessage(b.dataset.prompt));$("#newChat").onclick=newChat;$("#themeButton").onclick=()=>theme(document.body.classList.contains("light-mode")?"dark":"light");$("#mobileMenu").onclick=()=>sidebar.classList.toggle("open");$("#closeSidebar").onclick=()=>sidebar.classList.remove("open");$("#loginButton").onclick=showAuth;$("#accountMenu").onclick=showAuth;$("#closeAuth").onclick=()=>$("#authModal").hidden=true;$("#guestButton").onclick=()=>$("#authModal").hidden=true;$("#logoutButton").onclick=async()=>{try{if(auth)await auth.signOut();updateUser(null);$("#authModal").hidden=true;toast("Você saiu da conta.")}catch(e){toast(e.message,true)}};$("#authModal").onclick=e=>{if(e.target.id==="authModal")e.currentTarget.hidden=true};document.addEventListener("keydown",e=>{if(e.key==="Escape"){sidebar.classList.remove("open");$("#authModal").hidden=true;closeSettings()}});theme(read(THEME,"dark"));renderHistory();initAuth();
 })();
