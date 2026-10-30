@@ -119,9 +119,16 @@ async function answerGemini(raw,signal){
  const chat=chats.find(item=>item.id===active);
  const history=(chat?.items||[]).slice(-12).map(item=>(item.role==="user"?"Usuário: ":"Wiki AI: ")+String(item.text||"")).join("\n\n");
  const prompt=(getLanguage()==="en"?"You are Wiki AI, a helpful assistant. Answer clearly in the user's language. Do not claim to browse the web or cite sources.":"Você é a Wiki AI, uma assistente útil. Responda com clareza no idioma do usuário. Não diga que pesquisou na internet nem invente fontes.")+"\n\n"+(history?"Histórico recente da conversa:\n"+history+"\n\n":"")+"Responda à mensagem mais recente do usuário.";
- const response=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},body:JSON.stringify({model:"gemini-3.1-flash-lite",input:prompt,generation_config:{max_output_tokens:4096,thinking_level:"low"},store:false}),signal});
- let data;try{data=await response.json()}catch{throw new Error(getLanguage()==="en"?"Gemini returned an unreadable response.":"O Gemini retornou uma resposta inválida.")}
- if(!response.ok)throw new Error(data?.error?.message||((getLanguage()==="en"?"Gemini request failed (HTTP ":"Falha ao consultar o Gemini (HTTP ")+response.status+")."));
+ const models=["gemini-3.1-flash-lite","gemini-3.5-flash-lite"];
+ let response=null,data=null,lastError=null;
+ for(const model of models){
+  response=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":apiKey},body:JSON.stringify({model,input:prompt,generation_config:{max_output_tokens:4096,thinking_level:"low"},store:false}),signal});
+  try{data=await response.json()}catch{throw new Error(getLanguage()==="en"?"Gemini returned an unreadable response.":"O Gemini retornou uma resposta inválida.")}
+  if(response.ok)break;
+  lastError=data?.error?.message||("HTTP "+response.status);
+  if(response.status!==503)throw new Error(lastError);
+ }
+ if(!response?.ok)throw new Error((getLanguage()==="en"?"Gemini models are temporarily busy. Please try again in a little while. Details: ":"Os modelos Gemini estão temporariamente ocupados. Tente novamente daqui a pouco. Detalhes: ")+(lastError||"503"));
  const sources=[],textParts=[];
  for(const step of (Array.isArray(data.steps)?data.steps:[])){if(step?.type!=="model_output")continue;for(const block of (Array.isArray(step.content)?step.content:[])){if(block?.type==="text"&&block.text)textParts.push(block.text);for(const annotation of (Array.isArray(block?.annotations)?block.annotations:[])){if(annotation?.type==="url_citation"){const url=annotation.url||annotation.uri;if(url&&/^https?:\/\//i.test(url)&&!sources.some(source=>source.url===url))sources.push({title:annotation.title||url,url})}}}}
  const output=String(data.output_text||textParts.join("\n\n")).trim();
