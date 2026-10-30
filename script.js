@@ -145,7 +145,7 @@ function findCustomAnswer(raw){const query=norm(raw);if(!query)return null;const
 function formatNumber(value){if(!Number.isFinite(value))return null;return new Intl.NumberFormat(getLanguage()==="en"?"en-US":"pt-BR",{maximumFractionDigits:10}).format(Object.is(value,-0)?0:value)}
 function calculate(raw){
  let q=raw.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").trim().replace(/[?!]+$/,"");
- q=q.replace(/^(quanto e|quanto da|calcule|calcular|resolva|resolve|resultado de|qual o resultado de|faca|faz)\s+/,"").replace(/\s+(por favor|pra mim)$/,"").trim();
+ q=q.replace(/^(quanto e|quanto da|calcule|calcular|resolva|resolve|resultado de|qual o resultado de|faca|faz|what is|calculate|compute|how much is)\\s+/, "").replace(/\\s+(por favor|pra mim|please)$/, "").trim();
  q=q.replace(/\bmais\b/g,"+").replace(/\bmenos\b/g,"-").replace(/\bvezes\b/g,"*").replace(/\b(?:dividido por|dividido|dividir por)\b/g,"/").replace(/\bplus\b/g,"+").replace(/\bminus\b/g,"-").replace(/\btimes\b/g,"*").replace(/\bdivided by\b/g,"/").replace(/\bx\b/g,"*").replace(/,/g,".");
  const percent=q.match(/^(\d+(?:\.\d+)?)\s*%\s*(?:de|do|da|of)\s*(\d+(?:\.\d+)?)$/);
  if(percent)return (getLanguage()==="en"?"Let’s calculate!\n\n":"Vamos calcular!\n\n")+percent[1]+"% "+(getLanguage()==="en"?"of ":"de ")+percent[2]+" = "+formatNumber(Number(percent[1])*Number(percent[2])/100);
