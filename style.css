@@ -82,3 +82,19 @@ body.beige-mode .settings-theme-card.selected{background:#e9dfcd;border-color:#b
 .wiki-result-image{display:block;width:auto;max-width:min(100%,560px);max-height:340px;object-fit:contain;margin:12px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
 .word-limit-control{min-width:190px}
 @media(max-width:650px){.word-limit-control{width:100%}.word-limit-control .settings-select{width:100%}.composer-top-tools{padding:7px 9px 0}}
+
+/* Tema bege */
+body.beige-mode{--bg:#f2eadb;--surface:#fbf6eb;--surface-2:#e9dfcd;--text:#3e352b;--muted:#827565;--line:#ded2bd;--hover:#e8decd;background:#f2eadb;color:#3e352b}
+body.beige-mode .sidebar,body.beige-mode .topbar,body.beige-mode .composer{background:#f7f0e3;border-color:#ded2bd}
+body.beige-mode .message.assistant .message-text,body.beige-mode .settings-panel,body.beige-mode .auth-modal{background:#fbf6eb;color:#3e352b}
+body.beige-mode .settings-theme-card.selected{background:#e9dfcd;border-color:#b5a58d}
+.beige-mock{background:#e9dfcd}.beige-mock i{background:#c5b69e}.beige-mock i:first-child{background:#d8c9af}
+.custom-qa-list{max-height:320px;overflow-y:auto;overscroll-behavior:contain;padding:2px 5px 8px 0;scrollbar-width:thin}
+.custom-qa-copy{flex:1;min-width:0;max-height:180px;overflow-y:auto;overscroll-behavior:contain;white-space:normal}
+.composer-top-tools{display:flex;align-items:center;gap:10px;padding:8px 12px 0}
+.image-mode-toggle{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--muted);font:inherit;font-size:11px;cursor:pointer}
+.image-mode-toggle.active{border-color:var(--brand-accent);background:var(--surface-2);color:var(--text)}
+.image-mode-hint{color:var(--muted);font-size:10px}
+.wiki-result-image{display:block;width:auto;max-width:min(100%,560px);max-height:340px;object-fit:contain;margin:12px 0;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+.word-limit-control{min-width:190px}
+@media(max-width:650px){.word-limit-control{width:100%}.word-limit-control .settings-select{width:100%}.composer-top-tools{padding:7px 9px 0}}
