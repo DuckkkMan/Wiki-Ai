@@ -115,7 +115,7 @@ function getGeminiApiKey(){return geminiApiKey}
 function syncGeminiSettings(){const panel=$("#geminiSettings"),input=$("#geminiApiKey"),status=$("#geminiKeyStatus");if(panel)panel.hidden=searchModeSelect.value!=="gemini";if(input)input.value="";if(status)status.textContent=getGeminiApiKey()?(getLanguage()==="en"?"A key is loaded in this page.":"Chave carregada nesta página."):(getLanguage()==="en"?"No key configured on this page.":"Nenhuma chave configurada nesta página.")}
 async function answerGemini(raw,signal){
  const apiKey=getGeminiApiKey();
- if(!apiKey)throw new Error(getLanguage()==="en"?"Open Settings → Answers, select Gemini and save your Google AI Studio API key for this tab.":"Abra Configurações → Respostas, selecione Gemini e salve sua chave da API do Google AI Studio nesta aba.");
+ if(!apiKey)throw new Error(getLanguage()==="en"?"Open Settings → Answers, select Gemini and save your Google AI Studio API key on this page.":"Abra Configurações → Respostas, selecione Gemini e salve sua chave da API do Google AI Studio nesta página.");
  const chat=chats.find(item=>item.id===active);
  const history=(chat?.items||[]).slice(-12).map(item=>(item.role==="user"?"Usuário: ":"Wiki AI: ")+String(item.text||"")).join("\n\n");
  const prompt=(getLanguage()==="en"?"You are Wiki AI, a helpful assistant. Answer clearly in the user's language. Use Google Search when useful and do not invent sources.":"Você é a Wiki AI, uma assistente útil. Responda com clareza no idioma do usuário. Use a Pesquisa Google quando for útil e não invente fontes.")+"\n\n"+(history?"Histórico recente da conversa:\n"+history+"\n\n":"")+"Responda à mensagem mais recente do usuário.";
