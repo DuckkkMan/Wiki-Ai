@@ -17,24 +17,38 @@ function save(){writeLocal();syncCloudChats()}
 function toast(t,err=false){if(err){console.warn("Wiki AI notice:",t);return}const e=document.createElement("div");e.className="toast";e.textContent=t;toastBox.append(e);setTimeout(()=>e.remove(),3000)}
 function showChat(){welcome.hidden=true;messages.style.display="flex"}function newChat(){cancelPending();active=null;messages.replaceChildren();messages.style.display="none";welcome.hidden=false;input.value="";resize();input.focus();sidebar.classList.remove("open")}
 function resize(){input.style.height="auto";input.style.height=Math.min(input.scrollHeight,180)+"px"}function scroll(){requestAnimationFrame(()=>chatArea.scrollTop=chatArea.scrollHeight)}
-function getWordLimit(){const c=localStorage.getItem(LIMIT_KEY)||"1000";if(c==="unlimited")return Infinity;const n=Number(c);return Number.isFinite(n)&&n>=100&&n<=5000?Math.round(n/100)*100:1000}function limitResponse(text){const marker="[[ARTICLE_TRUNCATED]]";const existing=text.includes(marker);const clean=existing?text.slice(0,text.indexOf(marker)).trimEnd():text;const words=[...clean.matchAll(/\S+/g)];const limit=getWordLimit();if(words.length<=limit)return existing?clean+"\n\n"+marker+(getLanguage()==="en"?"The article was shortened. Open the full article for more.":"O texto foi cortado e é recomendável ver o artigo completo."):clean;const cut=clean.slice(0,words[limit-1].index+words[limit-1][0].length).trimEnd();return cut+"\n\n"+marker+(getLanguage()==="en"?"The response reached your selected word limit.":"A resposta atingiu o limite de palavras escolhido.");}function render(role,text,source=null,animate=false,onComplete=null){
- const row=document.createElement("article");row.className="message "+role;
- if(read(ANIM_KEY,"true")==="false")row.style.animation="none";
+function getWordLimit(){const c=localStorage.getItem(LIMIT_KEY)||"1000";if(c==="unlimited")return Infinity;const n=Number(c);return Number.isFinite(n)&&n>=100&&n<=5000?Math.round(n/100)*100:1000}function limitResponse(text){const marker="[[ARTICLE_TRUNCATED]]";const existing=text.includes(marker);const clean=existing?text.slice(0,text.indexOf(marker)).trimEnd():text;const words=[...clean.matchAll(/\S+/g)];const limit=getWordLimit();if(words.length<=limit)return existing?clean+"\n\n"+marker+(getLanguage()==="en"?"The article was shortened. Open the full article for more.":"O texto foi cortado e é recomendável ver o artigo completo."):clean;const cut=clean.slice(0,words[limit-1].index+words[limit-1][0].length).trimEnd();return cut+"\n\n"+marker+(getLanguage()==="en"?"The response reached your selected word limit.":"A resposta atingiu o limite de palavras escolhido.");}function highlightCode(source,language,target){
+ const lang=(language||"").toLowerCase();
+ const keys={lua:"and break do else elseif end false for function if in local nil not or repeat return then true until while",javascript:"async await break case catch class const continue default delete do else export extends false finally for function if import in instanceof let new null of return static super switch this throw true try typeof undefined var void while",python:"and as assert async await break class continue def del elif else except False finally for from global if import in is lambda None nonlocal not or pass raise return True try while with yield",json:"true false null"};
+ const known=new Set((keys[lang]||keys.javascript).split(" "));
+ const re=/(--[^\n]*|\/\/[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\x60(?:\\.|[^\x60\\])*\x60|\b\d+(?:\.\d+)?\b|\b[A-Za-z_$][\w$]*(?=\s*\()|\b[A-Za-z_$][\w$]*\b|[{}()[\].,;:+\-*/%=<>!&|^~?])/g;
+ let pos=0,m;
+ while((m=re.exec(source))){if(m.index>pos)target.append(document.createTextNode(source.slice(pos,m.index)));const t=m[0];let cls="";
+ if(t.startsWith("--")||t.startsWith("//")||(t.startsWith("#")&&lang==="python"))cls="code-comment";
+ else if([34,39,96].includes(t.charCodeAt(0)))cls="code-string";
+ else if(/^\d/.test(t))cls="code-number";
+ else if(known.has(t))cls="code-keyword";
+ else if(/^[A-Za-z_$][\w$]*$/.test(t)&&source.slice(re.lastIndex).match(/^\s*\(/))cls="code-function";
+ else if(/^[{}()[\].,;:+\-*/%=<>!&|^~?]$/.test(t))cls="code-operator";
+ if(cls){const span=document.createElement("span");span.className=cls;span.textContent=t;target.append(span)}else target.append(document.createTextNode(t));pos=re.lastIndex}
+ if(pos<source.length)target.append(document.createTextNode(source.slice(pos)));
+}
+function renderRichText(target,text){
+ const lines=String(text||"").split("\n"),marker=String.fromCharCode(96).repeat(3);let plain=[],inside=false,code=[],language="codigo";
+ const flushPlain=()=>{if(plain.length){target.append(document.createTextNode(plain.join("\n")));plain=[]}};
+ const flushCode=()=>{const source=code.join("\n").replace(/\n$/,""),box=document.createElement("section");box.className="code-block";const bar=document.createElement("div");bar.className="code-toolbar";const label=document.createElement("span");label.textContent=language;const copy=document.createElement("button");copy.className="code-copy";copy.type="button";copy.textContent="Copiar código";copy.onclick=async()=>{try{await navigator.clipboard.writeText(source);copy.textContent="Copiado!"}catch{const area=document.createElement("textarea");area.value=source;document.body.append(area);area.select();try{document.execCommand("copy");copy.textContent="Copiado!"}catch{}area.remove()}setTimeout(()=>{if(copy.isConnected)copy.textContent="Copiar código"},1400)};bar.append(label,copy);const pre=document.createElement("pre"),el=document.createElement("code");highlightCode(source,language,el);pre.append(el);box.append(bar,pre);target.append(box)};
+ for(const line of lines){if(line.trimStart().startsWith(marker)){if(!inside){flushPlain();inside=true;language=line.trim().slice(3).trim()||"codigo";code=[]}else{flushCode();inside=false;language="codigo"}continue}if(inside)code.push(line);else plain.push(line)}
+ if(inside)flushCode();else flushPlain();
+}
+function render(role,text,source=null,animate=false,onComplete=null){
+ const row=document.createElement("article");row.className="message "+role;if(read(ANIM_KEY,"true")==="false")row.style.animation="none";
  const av=document.createElement("div");av.className="message-avatar";av.textContent=role==="user"?(user?.displayName?.[0]?.toUpperCase()||"V"):"✳";
- const body=document.createElement("div");body.className="message-body";
- const label=document.createElement("div");label.className="message-role";label.textContent=role==="user"?(user?.displayName||(getLanguage()==="en"?"You":"Você")):"Wiki AI";
- const sources=Array.isArray(source)?source:(source?[source]:[]);
- const content=document.createElement("div");content.className="message-text";content.style.fontSize=(read(TEXT_KEY,"14")||"14")+"px";
- const cutMarker="[[ARTICLE_TRUNCATED]]";const cutAt=text.indexOf(cutMarker);const mainText=cutAt>=0?text.slice(0,cutAt):text;const warning=cutAt>=0?text.slice(cutAt+cutMarker.length).trim():"";
- const showWarning=()=>{if(!warning)return;const note=document.createElement("div");note.className="truncated-warning";note.textContent=warning;content.append(note)};
- body.append(label);
- for(const item of sources){if(item?.image){const image=document.createElement("img");image.className="wiki-result-image";image.src=item.image;image.alt=item.title||"Wikipedia image";image.loading="lazy";body.append(image)}}
- body.append(content);
+ const body=document.createElement("div");body.className="message-body";const label=document.createElement("div");label.className="message-role";label.textContent=role==="user"?(user?.displayName||(getLanguage()==="en"?"You":"Você")):"Wiki AI";
+ const sources=Array.isArray(source)?source:(source?[source]:[]),content=document.createElement("div");content.className="message-text";content.style.fontSize=(read(TEXT_KEY,"14")||"14")+"px";
+ const marker="[[ARTICLE_TRUNCATED]]",cut=text.indexOf(marker),main=cut>=0?text.slice(0,cut):text,warning=cut>=0?text.slice(cut+marker.length).trim():"";
+ body.append(label);for(const item of sources){if(item?.image){const image=document.createElement("img");image.className="wiki-result-image";image.src=item.image;image.alt=item.title||"Wikipedia image";image.loading="lazy";body.append(image)}}body.append(content);
  for(const item of sources){if(!item?.url)continue;const a=document.createElement("a");a.className="source-link";a.href=item.url;a.target="_blank";a.rel="noopener noreferrer";a.textContent="↗ "+item.title;body.append(a)}
- row.append(av,body);messages.append(row);
- if(!animate){content.textContent=mainText;showWarning();if(onComplete)onComplete()}
- if(animate){let i=0;const step=()=>{if(!row.isConnected){if(typingTimer){clearTimeout(typingTimer);typingTimer=null}return}content.textContent+=mainText.slice(i,i+18);i+=18;scroll();if(i<mainText.length)typingTimer=setTimeout(step,12);else{typingTimer=null;showWarning();scroll();if(onComplete)onComplete()}};step()}
- scroll();return row
+ row.append(av,body);messages.append(row);renderRichText(content,main);if(warning){const note=document.createElement("div");note.className="truncated-warning";note.textContent=warning;content.append(note)}if(onComplete)onComplete();scroll();return row
 }
 function renderHistory(){historyEl.replaceChildren();if(!chats.length){const p=document.createElement("p");p.className="history-empty";p.textContent=getLanguage()==="en"?"Your conversations will appear here.":"Suas conversas aparecerão aqui.";historyEl.append(p);return}chats.sort((a,b)=>b.time-a.time).forEach(c=>{const row=document.createElement("div");row.className="history-row"+(c.id===active?" active":"");const b=document.createElement("button");b.className="history-item";b.textContent="◷  "+c.title;b.title=c.title;b.onclick=()=>openChat(c.id);const d=document.createElement("button");d.className="delete-chat";d.textContent="×";d.title="Excluir";d.onclick=()=>{chats=chats.filter(x=>x.id!==c.id);deleteCloudChat(c.id);save();renderHistory();if(active===c.id)newChat()};row.append(b,d);historyEl.append(row)})}
 function openChat(id){const c=chats.find(x=>x.id===id);if(!c)return;cancelPending();active=id;messages.replaceChildren();showChat();c.items.forEach(m=>render(m.role,m.text,m.source));renderHistory();sidebar.classList.remove("open")}
